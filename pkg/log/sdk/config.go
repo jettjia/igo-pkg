@@ -1,6 +1,6 @@
 package sdk
 
-import "github.com/jettjia/go-pkg/pkg/log/enum"
+import "github.com/jettjia/igo-pkg/pkg/log/enum"
 
 // Config basic log configuration information
 type Config struct {

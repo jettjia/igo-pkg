@@ -20,7 +20,6 @@ require (
 	github.com/hibiken/asynq v0.25.1
 	github.com/hyperboloide/lk v0.0.0-20230325114855-ce3fecd34798
 	github.com/jackc/pgx/v5 v5.7.2
-	github.com/jettjia/go-pkg v1.26.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/ollama/ollama v0.11.5

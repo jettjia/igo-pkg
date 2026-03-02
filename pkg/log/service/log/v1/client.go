@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/jettjia/go-pkg/pkg/log/sdk"
+	"github.com/jettjia/igo-pkg/pkg/log/sdk"
 )
 
 type Client struct {

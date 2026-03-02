@@ -3,7 +3,7 @@ package reranker
 import (
 	"context"
 
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 type Reranker interface {

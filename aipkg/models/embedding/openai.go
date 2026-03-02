@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/logger"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/logger"
 )
 
 // OpenAIEmbedder implements text vectorization functionality using OpenAI API

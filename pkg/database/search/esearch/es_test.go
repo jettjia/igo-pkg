@@ -3,7 +3,7 @@ package esearch
 import (
 	"testing"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/conf"
 )
 
 func Test_EsClient(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 // NewRecursiveCharacterStrategy 创建新的递归字符分块策略实例

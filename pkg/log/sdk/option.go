@@ -1,6 +1,6 @@
 package sdk
 
-import "github.com/jettjia/go-pkg/pkg/log/enum"
+import "github.com/jettjia/igo-pkg/pkg/log/enum"
 
 type Option func(p *Config)
 

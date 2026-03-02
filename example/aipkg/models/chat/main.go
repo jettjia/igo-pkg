@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jettjia/go-pkg/aipkg/models/chat"
+	"github.com/jettjia/igo-pkg/aipkg/models/chat"
 )
 
 func getLLM() chat.Chat {

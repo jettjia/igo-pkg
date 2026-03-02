@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 // RetrieverEngineType 表示检索引擎类型

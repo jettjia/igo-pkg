@@ -3,7 +3,7 @@ package docpipeline
 import (
 	"context"
 
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 // DocumentProcessor 定义文档处理流水线接口

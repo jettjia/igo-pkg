@@ -3,7 +3,7 @@ package data
 import (
 	"context"
 
-	"github.com/jettjia/go-pkg/pkg/tenant"
+	"github.com/jettjia/igo-pkg/pkg/tenant"
 	"gorm.io/gorm"
 )
 

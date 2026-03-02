@@ -4,7 +4,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/conf"
 	"gorm.io/plugin/dbresolver"
 )
 

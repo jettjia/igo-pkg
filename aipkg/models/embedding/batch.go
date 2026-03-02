@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/common"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/common"
 	"github.com/panjf2000/ants/v2"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/conf"
 )
 
 type RedisDB struct {

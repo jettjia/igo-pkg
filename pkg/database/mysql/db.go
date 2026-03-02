@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/conf"
 )
 
 type DB struct {

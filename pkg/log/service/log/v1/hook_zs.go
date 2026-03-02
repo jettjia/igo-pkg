@@ -12,7 +12,7 @@ import (
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/sirupsen/logrus"
 
-	"github.com/jettjia/go-pkg/pkg/log/util"
+	"github.com/jettjia/igo-pkg/pkg/log/util"
 )
 
 // zsHook

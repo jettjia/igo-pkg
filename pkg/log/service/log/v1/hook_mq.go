@@ -9,7 +9,7 @@ import (
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/sirupsen/logrus"
 
-	"github.com/jettjia/go-pkg/pkg/event"
+	"github.com/jettjia/igo-pkg/pkg/event"
 )
 
 var (

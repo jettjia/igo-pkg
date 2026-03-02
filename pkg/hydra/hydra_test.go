@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/conf"
 )
 
 // go test -v -run Test_RegisterClient ./

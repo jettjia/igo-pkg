@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/jettjia/go-pkg/pkg/xerror"
+	"github.com/jettjia/igo-pkg/pkg/xerror"
 )
 
 func RecoverInterceptor() grpc_recovery.Option {

@@ -3,7 +3,7 @@ package xerror
 import (
 	"context"
 
-	"github.com/jettjia/go-pkg/pkg/xi18n"
+	"github.com/jettjia/igo-pkg/pkg/xi18n"
 )
 
 var (

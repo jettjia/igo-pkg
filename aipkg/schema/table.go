@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/ptr"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ptr"
 )
 
 type TableSchema struct {

@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/grpc/metadata"
 
-	"github.com/jettjia/go-pkg/pkg/xmiddleware/jwt"
+	"github.com/jettjia/igo-pkg/pkg/xmiddleware/jwt"
 )
 
 // AuthInterceptor

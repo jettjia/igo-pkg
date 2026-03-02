@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/conf"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 // NewRecursiveParagraphStrategy 创建新的递归段落分块策略实例

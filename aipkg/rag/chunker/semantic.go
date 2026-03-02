@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 // NewSemanticStrategy 创建新的语义分块策略实例

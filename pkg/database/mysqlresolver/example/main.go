@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	resolver "github.com/jettjia/go-pkg/pkg/database/mysqlresolver"
+	resolver "github.com/jettjia/igo-pkg/pkg/database/mysqlresolver"
 	"gopkg.in/yaml.v3"
 )
 

@@ -5,7 +5,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
-	"github.com/jettjia/go-pkg/pkg/database/mysqlresolver"
+	"github.com/jettjia/igo-pkg/pkg/database/mysqlresolver"
 )
 
 type Data struct {

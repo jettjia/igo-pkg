@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/logger"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/logger"
 )
 
 // OpenAIReranker implements a reranking system based on OpenAI models

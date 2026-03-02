@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jettjia/go-pkg/aipkg/mem/mem0"
+	"github.com/jettjia/igo-pkg/aipkg/mem/mem0"
 )
 
 func main() {

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 	"github.com/sirupsen/logrus"
 )
 

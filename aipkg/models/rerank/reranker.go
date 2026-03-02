@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 )
 
 // Reranker defines the interface for document reranking

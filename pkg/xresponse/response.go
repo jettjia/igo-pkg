@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/jettjia/go-pkg/pkg/xerror"
+	"github.com/jettjia/igo-pkg/pkg/xerror"
 )
 
 type rspErrorData struct {
