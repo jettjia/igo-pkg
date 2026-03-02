@@ -6,8 +6,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/jettjia/go-pkg/aipkg/models/chat"
-	config "github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/aipkg/models/chat"
+	config "github.com/jettjia/igo-pkg/pkg/conf"
 )
 
 // Rewriter 负责关键词提取和问题重写

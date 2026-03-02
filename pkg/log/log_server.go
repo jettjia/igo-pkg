@@ -3,10 +3,10 @@ package log
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
-	"github.com/jettjia/go-pkg/pkg/log/enum"
-	"github.com/jettjia/go-pkg/pkg/log/sdk"
-	logv1 "github.com/jettjia/go-pkg/pkg/log/service/log/v1"
+	"github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/log/enum"
+	"github.com/jettjia/igo-pkg/pkg/log/sdk"
+	logv1 "github.com/jettjia/igo-pkg/pkg/log/service/log/v1"
 )
 
 func NewLoggerServer(conf *conf.Config) *logrus.Logger {

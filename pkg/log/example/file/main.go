@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/jettjia/go-pkg/pkg/log/enum"
-	"github.com/jettjia/go-pkg/pkg/log/sdk"
-	logv1 "github.com/jettjia/go-pkg/pkg/log/service/log/v1"
+	"github.com/jettjia/igo-pkg/pkg/log/enum"
+	"github.com/jettjia/igo-pkg/pkg/log/sdk"
+	logv1 "github.com/jettjia/igo-pkg/pkg/log/service/log/v1"
 )
 
 func main() {

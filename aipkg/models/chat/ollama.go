@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/ollama"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ollama"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 	ollamaapi "github.com/ollama/ollama/api"
 )
 

@@ -7,8 +7,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 
-	"github.com/jettjia/go-pkg/pkg/xerror"
-	"github.com/jettjia/go-pkg/pkg/xresponse"
+	"github.com/jettjia/igo-pkg/pkg/xerror"
+	"github.com/jettjia/igo-pkg/pkg/xresponse"
 )
 
 func CatchError() gin.HandlerFunc {

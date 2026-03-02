@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/ptr"
-	"github.com/jettjia/go-pkg/aipkg/rag/reranker"
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ptr"
+	"github.com/jettjia/igo-pkg/aipkg/rag/reranker"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 func NewRRFReranker(k int64) reranker.Reranker {

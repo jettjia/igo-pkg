@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"sort"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/rrf"
-	"github.com/jettjia/go-pkg/aipkg/schema"
-	"github.com/jettjia/go-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/rrf"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/pkg/util"
 	"github.com/pgvector/pgvector-go"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

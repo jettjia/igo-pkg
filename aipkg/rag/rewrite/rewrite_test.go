@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jettjia/go-pkg/aipkg/models/chat"
-	config "github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/aipkg/models/chat"
+	config "github.com/jettjia/igo-pkg/pkg/conf"
 	"gopkg.in/yaml.v3"
 )
 

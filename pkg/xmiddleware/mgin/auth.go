@@ -6,11 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
-	"github.com/jettjia/go-pkg/pkg/hydra"
-	"github.com/jettjia/go-pkg/pkg/xerror"
-	"github.com/jettjia/go-pkg/pkg/xmiddleware/jwt"
-	"github.com/jettjia/go-pkg/pkg/xresponse"
+	"github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/hydra"
+	"github.com/jettjia/igo-pkg/pkg/xerror"
+	"github.com/jettjia/igo-pkg/pkg/xmiddleware/jwt"
+	"github.com/jettjia/igo-pkg/pkg/xresponse"
 )
 
 // TokenAuthorization verify the token

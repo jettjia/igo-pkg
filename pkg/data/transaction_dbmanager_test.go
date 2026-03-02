@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
-	"github.com/jettjia/go-pkg/pkg/database/mysqlresolver"
+	"github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/database/mysqlresolver"
 )
 
 var dataManagerCli *Data

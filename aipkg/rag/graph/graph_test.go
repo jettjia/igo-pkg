@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jettjia/go-pkg/aipkg/models/chat"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
-	config "github.com/jettjia/go-pkg/pkg/conf"
-	"github.com/jettjia/go-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/models/chat"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
+	config "github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/assert/yaml"
 )

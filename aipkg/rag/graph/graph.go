@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jettjia/go-pkg/aipkg/models/chat"
-	"github.com/jettjia/go-pkg/aipkg/pkg/common"
-	"github.com/jettjia/go-pkg/aipkg/pkg/logger"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
-	config "github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/aipkg/models/chat"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/common"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/logger"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
+	config "github.com/jettjia/igo-pkg/pkg/conf"
 	"golang.org/x/sync/errgroup"
 )
 

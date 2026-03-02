@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/jettjia/go-pkg/aipkg/schema"
-	"github.com/jettjia/go-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/pkg/util"
 )
 
 // 初始化OpenSearch客户端

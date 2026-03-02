@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/ollama"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ollama"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 )
 
 // Embedder defines the interface for text vectorization

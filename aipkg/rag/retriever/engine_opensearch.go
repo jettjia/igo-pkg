@@ -10,8 +10,8 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/jettjia/go-pkg/aipkg/pkg/rrf"
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/rrf"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 // elasticsearchRepository implements the RetrieveEngineRepository interface for Elasticsearch v8

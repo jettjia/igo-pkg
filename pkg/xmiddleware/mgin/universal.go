@@ -2,8 +2,8 @@ package mgin
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/jettjia/go-pkg/pkg/xerror"
-	"github.com/jettjia/go-pkg/pkg/xresponse"
+	"github.com/jettjia/igo-pkg/pkg/xerror"
+	"github.com/jettjia/igo-pkg/pkg/xresponse"
 )
 
 // Universal generic middleware part

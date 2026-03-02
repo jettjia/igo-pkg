@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/jettjia/go-pkg/aipkg/models/chat"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/models/chat"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -46,9 +46,6 @@ Simpler, faster, and stronger.
       * chunk text split
       * docpipeline document processing pipeline
       * graph document auto graph
-      * pageindex Document Index for Reasoning-based RAG
-        * support pdf
-        * support md
       * reranker rrf algorithm and rerank
       * retriever document retriever
         * support pgsql

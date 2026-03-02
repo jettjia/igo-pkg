@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jettjia/go-pkg/aipkg/models/rerank"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/models/rerank"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 )
 
 func main() {

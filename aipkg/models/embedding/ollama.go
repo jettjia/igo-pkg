@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/logger"
-	"github.com/jettjia/go-pkg/aipkg/pkg/ollama"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/logger"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ollama"
 	ollamaapi "github.com/ollama/ollama/api"
 )
 

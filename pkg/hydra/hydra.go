@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/jettjia/go-pkg/pkg/conf"
-	"github.com/jettjia/go-pkg/pkg/httpclient"
+	"github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/httpclient"
 )
 
 var (

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/ollama"
-	"github.com/jettjia/go-pkg/aipkg/pkg/runtime"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ollama"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/runtime"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 )
 
 // ChatOptions 聊天选项

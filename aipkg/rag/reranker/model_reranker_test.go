@@ -6,10 +6,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jettjia/go-pkg/aipkg/models/rerank"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
-	"github.com/jettjia/go-pkg/aipkg/schema"
-	"github.com/jettjia/go-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/models/rerank"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 

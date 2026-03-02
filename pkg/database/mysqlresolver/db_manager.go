@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/jettjia/go-pkg/pkg/conf"
-	"github.com/jettjia/go-pkg/pkg/database/mysql"
+	"github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/database/mysql"
 	"gorm.io/gorm"
 )
 

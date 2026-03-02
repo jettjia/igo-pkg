@@ -5,9 +5,9 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/jettjia/go-pkg/aipkg/models/embedding"
-	"github.com/jettjia/go-pkg/aipkg/rag/chunker"
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/models/embedding"
+	"github.com/jettjia/igo-pkg/aipkg/rag/chunker"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 	"github.com/panjf2000/ants/v2"
 )
 

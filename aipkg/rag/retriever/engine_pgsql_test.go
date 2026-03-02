@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jettjia/go-pkg/aipkg/schema"
-	"github.com/jettjia/go-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/pkg/util"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

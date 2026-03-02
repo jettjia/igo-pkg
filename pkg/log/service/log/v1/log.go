@@ -10,8 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/jettjia/go-pkg/pkg/log/enum"
-	"github.com/jettjia/go-pkg/pkg/log/sdk"
+	"github.com/jettjia/igo-pkg/pkg/log/enum"
+	"github.com/jettjia/igo-pkg/pkg/log/sdk"
 )
 
 var (

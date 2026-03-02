@@ -1,4 +1,4 @@
-PKG := "github.com/jettjia/go-pkg"
+PKG := "github.com/jettjia/igo-pkg"
 PKG_LIST := $(shell go list ${PKG}/...)
 
 init:

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jettjia/go-pkg/aipkg/models/chat"
-	"github.com/jettjia/go-pkg/aipkg/pkg/logger"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
-	"github.com/jettjia/go-pkg/aipkg/schema"
-	config "github.com/jettjia/go-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/aipkg/models/chat"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/logger"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
+	config "github.com/jettjia/igo-pkg/pkg/conf"
 )
 
 type NL2SQL interface {

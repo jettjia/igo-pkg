@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jettjia/go-pkg/aipkg/models/embedding"
-	"github.com/jettjia/go-pkg/aipkg/pkg/ollama"
-	"github.com/jettjia/go-pkg/aipkg/pkg/types"
+	"github.com/jettjia/igo-pkg/aipkg/models/embedding"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ollama"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 	"github.com/panjf2000/ants/v2"
 )
 

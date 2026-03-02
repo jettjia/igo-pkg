@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jettjia/go-pkg/aipkg/models/rerank"
-	"github.com/jettjia/go-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/aipkg/models/rerank"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 // ModelReranker 适配器，将 models/rerank.Reranker 适配到 reranker.Reranker 接口

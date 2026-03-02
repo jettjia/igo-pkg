@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jettjia/go-pkg/aipkg/pkg/ptr"
-	"github.com/jettjia/go-pkg/aipkg/schema"
-	"github.com/jettjia/go-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/pkg/ptr"
+	"github.com/jettjia/igo-pkg/aipkg/schema"
+	"github.com/jettjia/igo-pkg/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
