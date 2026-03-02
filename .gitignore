@@ -1,0 +1,26 @@
+.buildpath
+.hgignore.swp
+.project
+.orig
+.swp
+.idea/
+.settings/
+.vscode/
+vendor/
+bin/
+**/.DS_Store
+.test/
+temp/
+example/log
+go.work
+go.work.sum
+.windsurfrules
+main
+tmp/
+report
+
+# other
+**/*.tgz
+**/*.json
+**/*.key
+**/*.crt

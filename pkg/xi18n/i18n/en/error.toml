@@ -1,0 +1,7 @@
+BadRequestErr="Invalid request parameter. Please check your input."
+UnauthorizedErr="Authentication failed or not provided. Please log in."
+ForbiddenErr="Access denied. You do not have permission."
+NotFoundErr="Resource not found. Please check the URL."
+ConflictErr="Request conflicts with current resource state. Please try again."
+InternalServerErr="Server error. Please try again later or contact support."
+

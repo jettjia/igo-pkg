@@ -1,0 +1,6 @@
+BadRequestErr="请求参数无效，请检查您的输入。"
+UnauthorizedErr="认证失败或未提供认证信息，请登录。"
+ForbiddenErr="访问被拒绝，您没有相应权限。"
+NotFoundErr="请求的资源未找到，请检查URL。"
+ConflictErr="请求与服务器当前状态冲突，请稍后重试。"
+InternalServerErr="服务器内部错误，请稍后重试或联系技术支持。"

@@ -1,0 +1,8 @@
+"head","tail","relation","label"
+"关羽","刘备","younger_sworn_brother","义弟"
+"张飞","刘备","younger_sworn_brother","义弟"
+"关羽","张飞","elder_sworn_brother","义兄"
+"张苞","张飞","son","儿子"
+"关兴","关羽","son","儿子"
+"关平","张苞","sworn","结拜"
+"关平","关羽","adopted_son","义子"

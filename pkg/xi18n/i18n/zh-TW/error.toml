@@ -1,0 +1,6 @@
+BadRequestErr="請求參數無效，請檢查您的輸入。"
+UnauthorizedErr="認證失敗或未提供認證資訊，請登入。"
+ForbiddenErr="存取被拒絕，您沒有相應權限。"
+NotFoundErr="請求的資源未找到，請檢查URL。"
+ConflictErr="請求與伺服器當前狀態衝突，請稍後重試。"
+InternalServerErr="伺服器內部錯誤，請稍後重試或聯絡技術支援。"

@@ -1,0 +1,11 @@
+# db_config.yaml
+data_sources:
+  - name: primary
+    master_dsn: root:admin123@tcp(127.0.0.1:3306)/primary_db?charset=utf8mb4&parseTime=True&loc=Local
+    slave_dsns:
+      - root:admin123@tcp(127.0.0.1:3306)/primary_db?charset=utf8mb4&parseTime=True&loc=Local
+
+  - name: secondary
+    master_dsn: root:admin123@tcp(127.0.0.1:3306)/secondary_db?charset=utf8mb4&parseTime=True&loc=Local
+    slave_dsns:
+      - root:admin123@tcp(127.0.0.1:3306)/secondary_db?charset=utf8mb4&parseTime=True&loc=Local
