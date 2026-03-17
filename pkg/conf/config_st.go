@@ -25,21 +25,26 @@ type InitConf struct {
 }
 
 type ServerConf struct {
-	Lang              string `yaml:"lang"`
-	PublicPort        int    `yaml:"public_port"`
-	PrivatePort       int    `yaml:"private_port"`
-	XosPort           int    `yaml:"xos_port"`
+	Lang        string `yaml:"lang"`
+	PublicPort  int    `yaml:"public_port"`
+	PrivatePort int    `yaml:"private_port"`
+	ServerName  string `yaml:"server_name"`
+	Mode        string `yaml:"mode"`
+	Dev         bool   `yaml:"dev"`
+	EnableEvent bool   `yaml:"enable_event"`
+	EnableJob   bool   `yaml:"enable_job"`
+	EnableGrpc  bool   `yaml:"enable_grpc"`
+	EnableMcp   bool   `yaml:"enable_mcp"`
+
+	// mcp
+	McpPublicPort int `yaml:"mcp_public_port"`
+
+	// other
 	PublicMetricPort  int    `yaml:"public_metric_port"`
 	PrivateMetricPort int    `yaml:"private_metric_port"`
-	ServerName        string `yaml:"server_name"`
+	XosPort           int    `yaml:"xos_port"`
 	S3Region          string `yaml:"s3Region"`
-	Mode              string `yaml:"mode"`
-	Dev               bool   `yaml:"dev"`
 	Checks3           bool   `yaml:"check_s3"`
-	EnableEvent       bool   `yaml:"enable_event"`
-	EnableJob         bool   `yaml:"enable_job"`
-	EnableGrpc        bool   `yaml:"enable_grpc"`
-	EnableMcp         bool   `yaml:"enable_mcp"`
 }
 
 type GServerConf struct {
