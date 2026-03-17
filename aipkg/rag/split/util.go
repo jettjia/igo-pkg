@@ -102,4 +102,3 @@ func applyOverlapToStrings(chunks []string, chunkSize int, overlapRatio float64)
 	}
 	return out
 }
-

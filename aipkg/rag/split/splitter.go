@@ -45,4 +45,3 @@ func (b *StrategyBase) validateBase() error {
 	}
 	return nil
 }
-

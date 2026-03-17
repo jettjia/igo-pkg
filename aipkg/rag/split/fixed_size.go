@@ -98,4 +98,3 @@ func (s *FixedSizeStrategy) Split(ctx context.Context, text string) ([]*schema.D
 	}
 	return docs, nil
 }
-

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gookit/color"
 	"github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/database/gormext"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -121,25 +122,13 @@ func initDB(dbType string, masterDSN string, slaveDSNs []string, resolverConf db
 
 	dsn := masterDSN
 
-	var db *gorm.DB
-	var err error
-	if dbType == "mysql" {
-		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
-			NamingStrategy: schema.NamingStrategy{
-				SingularTable: true,
-			},
-			SkipDefaultTransaction: true,
-			Logger:                 loggerDefault,
-		})
-	} else {
-		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-			NamingStrategy: schema.NamingStrategy{
-				SingularTable: true,
-			},
-			SkipDefaultTransaction: true,
-			Logger:                 loggerDefault,
-		})
-	}
+	db, err := gorm.Open(dialectorFor(dbType, dsn), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+		SkipDefaultTransaction: true,
+		Logger:                 loggerDefault,
+	})
 
 	if err != nil {
 		return nil, err
@@ -154,21 +143,11 @@ func initDB(dbType string, masterDSN string, slaveDSNs []string, resolverConf db
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConn)
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.MaxLifetime) * time.Second)
 
-	// Convert DSN to gorm.Dialector type
-	var masterDialector gorm.Dialector
-	if dbType == "mysql" {
-		masterDialector = mysql.Open(dsn)
-	} else {
-		masterDialector = postgres.Open(dsn)
-	}
+	masterDialector := dialectorFor(dbType, dsn)
 
 	replicaDialectors := make([]gorm.Dialector, len(slaveDSNs))
 	for i, dsn := range slaveDSNs {
-		if dbType == "mysql" {
-			replicaDialectors[i] = mysql.Open(dsn)
-		} else {
-			replicaDialectors[i] = postgres.Open(dsn)
-		}
+		replicaDialectors[i] = dialectorFor(dbType, dsn)
 	}
 
 	resolverConf.Sources = append(resolverConf.Sources, masterDialector)
@@ -180,4 +159,15 @@ func initDB(dbType string, masterDSN string, slaveDSNs []string, resolverConf db
 	}
 
 	return db, nil
+}
+
+func dialectorFor(dbType string, dsn string) gorm.Dialector {
+	switch dbType {
+	case "mysql":
+		return mysql.Open(dsn)
+	case "postgres":
+		return postgres.Open(dsn)
+	default:
+		return gormext.Open(dsn)
+	}
 }

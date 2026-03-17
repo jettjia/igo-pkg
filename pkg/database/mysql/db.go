@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm/schema"
 
 	"github.com/jettjia/igo-pkg/pkg/conf"
+	"github.com/jettjia/igo-pkg/pkg/database/gormext"
 )
 
 type DB struct {
@@ -97,70 +98,8 @@ type DBConfig struct {
 }
 
 func (db *DB) getConn() *gorm.DB {
-
-	if db.Conf.DbType == "mysql" {
-		return db.getConnMysql()
-	}
-
-	return db.getConnPostgres()
-}
-
-func (db *DB) getConnPostgres() *gorm.DB {
-	var (
-		dsn string
-		err error
-	)
-
-	dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=%s",
-		db.Conf.Host, db.Conf.User, db.Conf.Password, db.Conf.Db, db.Conf.Port, getTimeZone())
-
-	// sql_gorm logger
 	loggerDefault := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-		logger.Config{
-			SlowThreshold:             time.Duration(db.Conf.SlowThreshold) * time.Second, // Slow SQL
-			LogLevel:                  logger.LogLevel(db.Conf.LogMode),                   // Log level
-			Colorful:                  true,                                               // Color Printing
-			IgnoreRecordNotFoundError: true,                                               // close not found error
-		},
-	)
-
-	cfg := &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true,
-		},
-		Logger: loggerDefault,
-	}
-
-	if db.Conn, err = gorm.Open(postgres.Open(dsn), cfg); err != nil {
-		panic(err)
-	}
-
-	sqlDB, _ := db.Conn.DB()
-	sqlDB.SetMaxIdleConns(db.Conf.MaxIdleConn)
-	sqlDB.SetMaxOpenConns(db.Conf.MaxOpenConn)
-	sqlDB.SetConnMaxLifetime(time.Duration(db.Conf.MaxLifetime) * time.Second)
-
-	return db.Conn
-}
-
-func getTimeZone() string {
-	if tz := os.Getenv("TZ"); tz != "" {
-		return tz
-	}
-	return "UTC"
-}
-
-func (db *DB) getConnMysql() *gorm.DB {
-	var (
-		dsn string
-		err error
-	)
-	dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local", db.Conf.User, db.Conf.Password, db.Conf.Host, db.Conf.Port, db.Conf.Db, db.Conf.DbChar)
-
-	// sql_gorm logger 配置
-	loggerDefault := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		logger.Config{
 			SlowThreshold:             time.Duration(db.Conf.SlowThreshold) * time.Second,
 			LogLevel:                  logger.LogLevel(db.Conf.LogMode),
@@ -176,14 +115,39 @@ func (db *DB) getConnMysql() *gorm.DB {
 		Logger: loggerDefault,
 	}
 
-	if db.Conn, err = gorm.Open(mysql.Open(dsn), cfg); err != nil {
-		panic(err)
+	var dialector gorm.Dialector
+	switch db.Conf.DbType {
+	case "mysql":
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
+			db.Conf.User, db.Conf.Password, db.Conf.Host, db.Conf.Port, db.Conf.Db, db.Conf.DbChar)
+		dialector = mysql.Open(dsn)
+	case "postgres":
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=%s",
+			db.Conf.Host, db.Conf.User, db.Conf.Password, db.Conf.Db, db.Conf.Port, getTimeZone())
+		dialector = postgres.Open(dsn)
+	default:
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
+			db.Conf.User, db.Conf.Password, db.Conf.Host, db.Conf.Port, db.Conf.Db, db.Conf.DbChar)
+		dialector = gormext.Open(dsn)
 	}
 
-	sqlDB, _ := db.Conn.DB()
+	conn, err := gorm.Open(dialector, cfg)
+	if err != nil {
+		panic(err)
+	}
+	db.Conn = conn
+
+	sqlDB, _ := conn.DB()
 	sqlDB.SetMaxIdleConns(db.Conf.MaxIdleConn)
 	sqlDB.SetMaxOpenConns(db.Conf.MaxOpenConn)
 	sqlDB.SetConnMaxLifetime(time.Duration(db.Conf.MaxLifetime) * time.Second)
 
-	return db.Conn
+	return conn
+}
+
+func getTimeZone() string {
+	if tz := os.Getenv("TZ"); tz != "" {
+		return tz
+	}
+	return "UTC"
 }
