@@ -39,6 +39,7 @@ type ServerConf struct {
 	EnableEvent       bool   `yaml:"enable_event"`
 	EnableJob         bool   `yaml:"enable_job"`
 	EnableGrpc        bool   `yaml:"enable_grpc"`
+	EnableMcp         bool   `yaml:"enable_mcp"`
 }
 
 type GServerConf struct {
