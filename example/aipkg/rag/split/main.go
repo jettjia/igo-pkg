@@ -13,7 +13,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	text, err := os.ReadFile("test.md")
+	text, err := os.ReadFile("test-2.md")
 	if err != nil {
 		panic(err)
 	}
@@ -120,7 +120,7 @@ func runFixedSize(ctx context.Context, input string) {
 func runRecursiveCharacter(ctx context.Context, input string) {
 	s := split.NewRecursiveCharacterStrategy()
 	s.ChunkSize = 400
-	s.OverlapRatio = 0.1
+	s.OverlapRatio = 0.15
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
 
