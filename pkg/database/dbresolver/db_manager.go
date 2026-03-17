@@ -1,11 +1,11 @@
-package mysqlresolver
+package dbresolver
 
 import (
 	"fmt"
 	"sync"
 
 	"github.com/jettjia/igo-pkg/pkg/conf"
-	"github.com/jettjia/igo-pkg/pkg/database/mysql"
+	db "github.com/jettjia/igo-pkg/pkg/database/db"
 	"gorm.io/gorm"
 )
 
@@ -47,7 +47,7 @@ func (m *DBManagerDynamic) GetDB(tenantID string) *gorm.DB {
 	}
 
 	dbName := fmt.Sprintf("%s_xtext", tenantID)
-	newDB := mysql.NewDBClientWithDB(m.conf, dbName).Conn
+	newDB := db.NewDBClientWithDB(m.conf, dbName).Conn
 	m.tenantDBs[tenantID] = newDB
 
 	return newDB

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jettjia/igo-pkg/pkg/conf"
-	"github.com/jettjia/igo-pkg/pkg/database/mysqlresolver"
+	"github.com/jettjia/igo-pkg/pkg/database/dbresolver"
 )
 
 var dataManagerCli *Data
@@ -26,7 +26,7 @@ func init() {
 
 	pkgConf.DBManager = dbCfg
 
-	dbCli := mysqlresolver.NewDBManagerClient(&pkgConf).Manager
+	dbCli := dbresolver.NewDBManagerClient(&pkgConf).Manager
 
 	dataManagerCli = NewDataOption(WithDBManager(dbCli))
 }

@@ -2,10 +2,9 @@ package data
 
 import (
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/jettjia/igo-pkg/pkg/database/dbresolver"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-
-	"github.com/jettjia/igo-pkg/pkg/database/mysqlresolver"
 )
 
 type Data struct {
@@ -13,9 +12,9 @@ type Data struct {
 	RedisCli       redis.UniversalClient
 	SearchCli      *elasticsearch.Client
 	SearchCliTyped *elasticsearch.TypedClient
-	DBManager      *mysqlresolver.DBManager
+	DBManager      *dbresolver.DBManager
 	// Dynamic Tenant Database Manager
-	DBManagerDynamic *mysqlresolver.DBManagerDynamic
+	DBManagerDynamic *dbresolver.DBManagerDynamic
 }
 
 func NewData(mysqlDB *gorm.DB, redisCli redis.UniversalClient, searchCli *elasticsearch.Client) *Data {
@@ -66,14 +65,14 @@ func WithSearchTyped(searchCli *elasticsearch.TypedClient) Option {
 }
 
 // WithDBManager Set up DBManager
-func WithDBManager(DBManager *mysqlresolver.DBManager) Option {
+func WithDBManager(DBManager *dbresolver.DBManager) Option {
 	return func(d *Data) {
 		d.DBManager = DBManager
 	}
 }
 
 // WithDBManagerDynamic Set up DBManagerDynamic
-func WithDBManagerDynamic(DBManagerDynamic *mysqlresolver.DBManagerDynamic) Option {
+func WithDBManagerDynamic(DBManagerDynamic *dbresolver.DBManagerDynamic) Option {
 	return func(d *Data) {
 		d.DBManagerDynamic = DBManagerDynamic
 	}

@@ -1,4 +1,4 @@
-package mysqlresolver
+package dbresolver
 
 import (
 	"log"

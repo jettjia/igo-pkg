@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jettjia/igo-pkg/pkg/conf"
-	"github.com/jettjia/igo-pkg/pkg/database/mysql"
+	"github.com/jettjia/igo-pkg/pkg/database/db"
 )
 
 var dataCli *Data
@@ -29,7 +29,7 @@ func init() {
 
 	pkgConf.DB = dbCfg
 
-	dbCli := mysql.NewDBClient(&pkgConf).Conn
+	dbCli := db.NewDBClient(&pkgConf).Conn
 
 	dataCli = NewDataOption(WithMysql(dbCli))
 }
