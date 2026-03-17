@@ -9,7 +9,7 @@ Simpler, faster, and stronger.
       * data option and transaction
     * database
       * kv-cache
-      * pgsql/mysql...
+      * pgsql/mysql/dm/kdb9...
       * resolver
       * redis
       * es

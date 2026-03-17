@@ -20,12 +20,12 @@ var db *gorm.DB
 
 func init() {
 	dbCfg := conf.DBConf{
-		// DbType:          "postgres",
+		DbType:          "postgres",
 		DbHost:          "127.0.0.1",
 		DbPort:          5432,
 		Username:        "root",
 		Password:        "admin123",
-		DbName:          "xtext",
+		DbName:          "ddddemo",
 		Charset:         "utf8mb4",
 		MaxIdleConn:     10,
 		MaxOpenConn:     100,
@@ -50,6 +50,7 @@ func Test_AutoMigrate(t *testing.T) {
 	}
 }
 
+// go test -v -run Test_NewDBClient_Find ./
 func Test_NewDBClient_Find(t *testing.T) {
 	var user User
 	err := db.Limit(1).Find(&user).Where("id = ?", 2).Error
