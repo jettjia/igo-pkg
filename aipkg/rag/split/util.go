@@ -1,9 +1,14 @@
 package split
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -15,6 +20,10 @@ var (
 	urlRegex   = regexp.MustCompile(`https?://[^\s]+`)
 	emailRegex = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
 	tableRegex = regexp.MustCompile(`(?s)<table>.*?</table>`)
+	pageRegex  = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
+
+	// 用于识别预处理阶段生成的简短占位符
+	tablePlaceholderRegex = regexp.MustCompile(`HTML_TABLE_PLACEHOLDER_(\d+)`)
 
 	spaceOnlyRegex = regexp.MustCompile(` {2,}`)
 	newline3Regex  = regexp.MustCompile(`\n{3,}`)
@@ -37,12 +46,12 @@ func overlapTokens(chunkSize int, overlapRatio float64) int {
 func preProcessText(text string, base *StrategyBase) string {
 	processed := text
 
+	// 提前将表格内容替换为简短占位符，防止在 Split 过程中被切断
+	base.tableCache = nil
 	processed = tableRegex.ReplaceAllStringFunc(processed, func(tableHTML string) string {
-		jsonBytes, err := tableToJSON(tableHTML)
-		if err != nil {
-			return tableHTML // 转换失败则返回原样
-		}
-		return string(jsonBytes)
+		placeholder := fmt.Sprintf("HTML_TABLE_PLACEHOLDER_%d", len(base.tableCache))
+		base.tableCache = append(base.tableCache, tableHTML)
+		return "\n\n" + placeholder + "\n\n"
 	})
 
 	if base.RemoveURLAndEmail {
@@ -79,10 +88,10 @@ func getNodeText(n *html.Node) string {
 	return b.String()
 }
 
-func tableToJSON(tableHTML string) ([]byte, error) {
+func tableToJSON(tableHTML string) string {
 	doc, err := html.Parse(strings.NewReader(tableHTML))
 	if err != nil {
-		return nil, err
+		return ""
 	}
 
 	var headers []string
@@ -122,6 +131,10 @@ func tableToJSON(tableHTML string) ([]byte, error) {
 
 	findRows(doc)
 
+	if len(headers) == 0 && len(dataRows) == 0 {
+		return ""
+	}
+
 	var result []map[string]string
 	for _, row := range dataRows {
 		item := make(map[string]string)
@@ -133,7 +146,11 @@ func tableToJSON(tableHTML string) ([]byte, error) {
 		result = append(result, item)
 	}
 
-	return json.Marshal(result)
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return ""
+	}
+	return string(jsonBytes)
 }
 
 func applyTrimSpaceIfNeeded(text string, base *StrategyBase) string {
@@ -141,6 +158,23 @@ func applyTrimSpaceIfNeeded(text string, base *StrategyBase) string {
 		return strings.TrimSpace(text)
 	}
 	return text
+}
+
+func recoverBrokenTable(fragment string, fullText string) string {
+	// 清理 fragment 中可能破坏正则的特殊字符
+	// 尝试找到 fragment 前后的 <table> 标签位置
+	// 这里使用简单策略：在原文中找包含该片段的最完整的 <table>...</table>
+	matches := tableRegex.FindAllString(fullText, -1)
+	for _, m := range matches {
+		// 检查这个 HTML 表格是否包含我们被切碎的片段
+		// 去除空白符后进行模糊匹配
+		cleanM := strings.Join(strings.Fields(m), "")
+		cleanF := strings.Join(strings.Fields(fragment), "")
+		if strings.Contains(cleanM, cleanF) {
+			return m
+		}
+	}
+	return ""
 }
 
 func newDocument(content string, title string, depth int) *schema.Document {
@@ -188,4 +222,140 @@ func applyOverlapToStrings(chunks []string, chunkSize int, overlapRatio float64)
 		out = append(out, merged)
 	}
 	return out
+}
+
+func calculateMD5(text string) string {
+	h := md5.New()
+	h.Write([]byte(text))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func convertToChunks(docs []*schema.Document, fileName string, originalText string, base *StrategyBase) []*Chunk {
+	docMD5 := calculateMD5(originalText)
+	chunks := make([]*Chunk, 0, len(docs))
+
+	// 先获取全文的所有页码位置，以便后续判断每个切片所属页码
+	type pageInfo struct {
+		pageNo int
+		pos    int
+	}
+	var pages []pageInfo
+	matches := pageRegex.FindAllStringSubmatchIndex(originalText, -1)
+	for _, m := range matches {
+		pNo, _ := strconv.Atoi(originalText[m[2]:m[3]])
+		pages = append(pages, pageInfo{pageNo: pNo, pos: m[0]})
+	}
+
+	for i, doc := range docs {
+		sliceMD5 := calculateMD5(doc.Content)
+		id := fmt.Sprintf("%s-%d", sliceMD5[:8], i)
+
+		// 提取当前切片内容中的页码标识
+		pageMap := make(map[int]bool)
+		// 1. 检查文档自带的 Page (如果已由其他逻辑设置)
+		if doc.Page > 0 {
+			pageMap[doc.Page] = true
+		}
+
+		// 2. 扫描内容中的页码标识
+		contentMatches := pageRegex.FindAllStringSubmatch(doc.Content, -1)
+		for _, cm := range contentMatches {
+			if p, err := strconv.Atoi(cm[1]); err == nil {
+				pageMap[p] = true
+			}
+		}
+
+		// 3. 如果内容中没有页码标识，尝试根据它在原图中的大致位置推断页码
+		if len(pageMap) == 0 && len(pages) > 0 {
+			// 找到切片内容在原图中的起始位置
+			// 为了提高匹配准确度，取切片的前 100 个字符进行搜索（避开 overlap 带来的重复匹配）
+			searchText := doc.Content
+			if runeLen(searchText) > 100 {
+				searchText = string([]rune(searchText)[:100])
+			}
+			// 在 originalText 中从上一个 chunk 结束的位置开始搜索，或者全局搜索
+			startIdx := strings.Index(originalText, searchText)
+			if startIdx != -1 {
+				currentPage := 1 // 默认第一页
+				for _, p := range pages {
+					if startIdx >= p.pos {
+						currentPage = p.pageNo
+					} else {
+						break
+					}
+				}
+				pageMap[currentPage] = true
+			} else {
+				// 如果 Index 没找到，可能是因为 preprocess 处理了文本。
+				// 暂时简单处理：沿用上一个 chunk 的页码
+				if i > 0 && len(chunks) > 0 {
+					for _, p := range chunks[i-1].Pages {
+						pageMap[p] = true
+					}
+				} else {
+					pageMap[1] = true
+				}
+			}
+		}
+
+		// 4. 补充逻辑：如果是因为 overlap 导致的切片包含了下一页的开始，也记录下来
+		if len(pages) > 0 {
+			startIdx := strings.Index(originalText, doc.Content)
+			if startIdx != -1 {
+				endIdx := startIdx + len(doc.Content)
+				for _, p := range pages {
+					if p.pos > startIdx && p.pos < endIdx {
+						pageMap[p.pageNo] = true
+					}
+				}
+			}
+		}
+
+		finalPages := make([]int, 0, len(pageMap))
+		for p := range pageMap {
+			finalPages = append(finalPages, p)
+		}
+		// 排序页码
+		sort.Ints(finalPages)
+
+		// 解析表格占位符
+		var text, table string
+		content := doc.Content
+		if tablePlaceholderRegex.MatchString(content) {
+			// 找到占位符中的索引
+			match := tablePlaceholderRegex.FindStringSubmatch(content)
+			if len(match) > 1 {
+				idx, _ := strconv.Atoi(match[1])
+				if idx >= 0 && idx < len(base.tableCache) {
+					tableHTML := base.tableCache[idx]
+					table = tableToJSON(tableHTML)
+					// 移除占位符，保留剩下的文本
+					text = tablePlaceholderRegex.ReplaceAllString(content, "")
+				}
+			}
+		} else {
+			text = content
+		}
+
+		// 移除内容中的页码标识，保持 text 干净
+		text = pageRegex.ReplaceAllString(text, "")
+		text = applyTrimSpaceIfNeeded(text, &StrategyBase{TrimSpace: true})
+
+		chunk := &Chunk{
+			DocName:    fileName,
+			DocMD5:     docMD5,
+			SliceMD5:   sliceMD5,
+			ID:         id,
+			Pages:      finalPages,
+			SegmentID:  i + 1,
+			SuperiorID: doc.DocID,
+			SliceContent: SliceContent{
+				Title: doc.Title,
+				Text:  text,
+				Table: table,
+			},
+		}
+		chunks = append(chunks, chunk)
+	}
+	return chunks
 }

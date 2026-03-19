@@ -60,7 +60,7 @@ func (s *DocumentStructureStrategy) Validate() error {
 	return nil
 }
 
-func (s *DocumentStructureStrategy) Split(ctx context.Context, text string) ([]*schema.Document, error) {
+func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, fileName string) ([]*Chunk, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string) ([]*
 		semantic := NewSemanticStrategy()
 		semantic.StrategyBase = s.StrategyBase
 		semantic.Threshold = s.SemanticThreshold
-		return semantic.Split(ctx, processed)
+		return semantic.Split(ctx, processed, fileName)
 	}
 
 	var docs []*schema.Document
@@ -89,7 +89,7 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string) ([]*
 		}
 		docs = append(docs, s.splitSection(ctx, top, nil)...)
 	}
-	return docs, nil
+	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
 }
 
 type sectionNode struct {

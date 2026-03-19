@@ -14,12 +14,12 @@ func TestFixedSizeStrategy_SplitWithOverlap(t *testing.T) {
 	s.ChunkOverlap = 2
 	s.OverlapRatio = 0.1
 
-	docs, err := s.Split(context.Background(), "abcdefghij1234567890")
+	docs, err := s.Split(context.Background(), "abcdefghij1234567890", "test.txt")
 	require.NoError(t, err)
 	require.Len(t, docs, 3)
-	require.Equal(t, "abcdefghij", docs[0].Content)
-	require.True(t, strings.HasPrefix(docs[1].Content, "ij"))
-	require.True(t, strings.HasPrefix(docs[2].Content, "90") || strings.HasSuffix(docs[2].Content, "90"))
+	require.Equal(t, "abcdefghij", docs[0].SliceContent.Text)
+	require.True(t, strings.HasPrefix(docs[1].SliceContent.Text, "ij"))
+	require.True(t, strings.HasPrefix(docs[2].SliceContent.Text, "90") || strings.HasSuffix(docs[2].SliceContent.Text, "90"))
 }
 
 func TestFixedSizeStrategy_PreprocessOptions(t *testing.T) {
@@ -31,13 +31,13 @@ func TestFixedSizeStrategy_PreprocessOptions(t *testing.T) {
 	s.TrimSpace = true
 
 	text := "联系 test@example.com\t\t访问 https://a.com  \n\n\n\n  结束"
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.Len(t, docs, 1)
-	require.NotContains(t, docs[0].Content, "example.com")
-	require.NotContains(t, docs[0].Content, "http")
-	require.NotContains(t, docs[0].Content, "\t")
-	require.NotContains(t, docs[0].Content, "\n\n\n")
+	require.NotContains(t, docs[0].SliceContent.Text, "example.com")
+	require.NotContains(t, docs[0].SliceContent.Text, "http")
+	require.NotContains(t, docs[0].SliceContent.Text, "\t")
+	require.NotContains(t, docs[0].SliceContent.Text, "\n\n\n")
 }
 
 func TestRecursiveCharacterStrategy_SeparatorsPriority(t *testing.T) {
@@ -47,11 +47,11 @@ func TestRecursiveCharacterStrategy_SeparatorsPriority(t *testing.T) {
 	s.TrimSpace = true
 
 	text := "第一段。\n\n第二段很长很长很长很长很长很长，包含逗号，继续。\n第三行。"
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 	for _, d := range docs {
-		require.LessOrEqual(t, runeLen(d.Content), s.ChunkSize)
+		require.LessOrEqual(t, runeLen(d.SliceContent.Text), s.ChunkSize)
 	}
 }
 
@@ -63,12 +63,12 @@ func TestSemanticStrategy_MergeSimilarSentences(t *testing.T) {
 	s.TrimSpace = true
 
 	text := "苹果手机电池不耐用。苹果手机电池老化很快。今天天气很好。"
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(docs), 2)
 
-	require.Contains(t, docs[0].Content, "苹果手机电池不耐用。")
-	require.Contains(t, docs[0].Content, "苹果手机电池老化很快。")
+	require.Contains(t, docs[0].SliceContent.Text, "苹果手机电池不耐用。")
+	require.Contains(t, docs[0].SliceContent.Text, "苹果手机电池老化很快。")
 }
 
 func TestSemanticStrategy_CosineSimilarityBaseline(t *testing.T) {
@@ -105,13 +105,13 @@ func TestSemanticStrategy_PreserveMarkdownNewlinesAndCodeBlocks(t *testing.T) {
 		"代码块后续说明。",
 	}, "\n")
 
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 
 	joined := ""
 	for _, d := range docs {
-		joined += d.Content + "\n\n"
+		joined += d.SliceContent.Text + "\n\n"
 	}
 	require.Contains(t, joined, "# 顶部标题\n")
 	require.NotContains(t, joined, "# 顶部标题##")
@@ -150,14 +150,14 @@ func TestSemanticStrategy_WindowBreakpoint_MoreCompact(t *testing.T) {
 		"说明一段。",
 	}, "\n")
 
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 	require.LessOrEqual(t, len(docs), 6)
 
 	joined := ""
 	for _, d := range docs {
-		joined += d.Content + "\n\n"
+		joined += d.SliceContent.Text + "\n\n"
 	}
 	require.Contains(t, joined, "# 顶部标题\n")
 	require.Contains(t, joined, "```yaml\napiVersion: apps/v1")
@@ -200,17 +200,17 @@ func TestSemanticStrategy_DoubleMerging_MoreCompact(t *testing.T) {
 		"再补充一句。",
 	}, "\n")
 
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 	require.LessOrEqual(t, len(docs), 12)
 	for _, d := range docs {
-		require.LessOrEqual(t, runeLen(d.Content), s.ChunkSize)
+		require.LessOrEqual(t, runeLen(d.SliceContent.Text), s.ChunkSize)
 	}
 
 	joined := ""
 	for _, d := range docs {
-		joined += d.Content + "\n\n"
+		joined += d.SliceContent.Text + "\n\n"
 	}
 	require.Contains(t, joined, "# 顶部标题\n")
 	require.Contains(t, joined, "```yaml\napiVersion: apps/v1")
@@ -239,14 +239,14 @@ func TestDocumentStructureStrategy_HeadingMustStayWithContent(t *testing.T) {
 		"小节内容很长很长很长很长很长很长很长很长很长很长很长。",
 	}, "\n")
 
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 
 	findChunk := func(substr string) string {
 		for _, d := range docs {
-			if strings.Contains(d.Content, substr) {
-				return d.Content
+			if strings.Contains(d.SliceContent.Text, substr) {
+				return d.SliceContent.Text
 			}
 		}
 		return ""
@@ -296,20 +296,20 @@ func TestDocumentStructureStrategy_MarkdownHeadingsAvoidListItems(t *testing.T) 
 		"3. 选择：选中得分最高的节点。",
 	}, "\n")
 
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 
 	for _, d := range docs {
-		require.NotEqual(t, "筛选：排除不满足条件的节点。", d.Title)
-		require.NotContains(t, d.Title, "筛选：")
-		require.NotContains(t, d.Title, "打分：")
-		require.NotContains(t, d.Title, "选择：")
+		require.NotEqual(t, "筛选：排除不满足条件的节点。", d.SliceContent.Title)
+		require.NotContains(t, d.SliceContent.Title, "筛选：")
+		require.NotContains(t, d.SliceContent.Title, "打分：")
+		require.NotContains(t, d.SliceContent.Title, "选择：")
 	}
 
 	found := false
 	for _, d := range docs {
-		if d.Title == "总标题" || d.Title == "一、章节" || d.Title == "1.1 小节" {
+		if d.SliceContent.Title == "总标题" || d.SliceContent.Title == "一、章节" || d.SliceContent.Title == "1.1 小节" {
 			found = true
 			break
 		}
@@ -341,13 +341,13 @@ func TestDocumentStructureStrategy_PreserveCodeBlockNewlines(t *testing.T) {
 		"代码块后续说明。",
 	}, "\n")
 
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 
 	joined := ""
 	for _, d := range docs {
-		joined += d.Content + "\n\n"
+		joined += d.SliceContent.Text + "\n\n"
 	}
 	require.Contains(t, joined, "```yaml\napiVersion: apps/v1")
 	require.NotContains(t, joined, "```yamlapiVersion")
@@ -371,20 +371,20 @@ func TestDocumentStructureStrategy_SkipEmptyHeadings(t *testing.T) {
 		"子标题内容二。",
 	}, "\n")
 
-	docs, err := s.Split(context.Background(), text)
+	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 
 	for _, d := range docs {
-		require.NotEqual(t, "根 / 父标题", d.Title)
+		require.NotEqual(t, "根 / 父标题", d.SliceContent.Title)
 	}
 
 	foundChild := false
 	for _, d := range docs {
-		if d.Title == "根 / 父标题 / 子标题" {
+		if d.SliceContent.Title == "根 / 父标题 / 子标题" {
 			foundChild = true
-			require.Contains(t, d.Content, "### 子标题")
-			require.Contains(t, d.Content, "子标题内容一。")
+			require.Contains(t, d.SliceContent.Text, "### 子标题")
+			require.Contains(t, d.SliceContent.Text, "子标题内容一。")
 		}
 	}
 	require.True(t, foundChild)

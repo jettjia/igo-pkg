@@ -46,7 +46,7 @@ func (s *FixedSizeStrategy) Validate() error {
 	return nil
 }
 
-func (s *FixedSizeStrategy) Split(ctx context.Context, text string) ([]*schema.Document, error) {
+func (s *FixedSizeStrategy) Split(ctx context.Context, text string, fileName string) ([]*Chunk, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
@@ -96,5 +96,5 @@ func (s *FixedSizeStrategy) Split(ctx context.Context, text string) ([]*schema.D
 			break
 		}
 	}
-	return docs, nil
+	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
 }

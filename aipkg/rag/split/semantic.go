@@ -136,7 +136,7 @@ func (s *SemanticStrategy) Validate() error {
 	return nil
 }
 
-func (s *SemanticStrategy) Split(ctx context.Context, text string) ([]*schema.Document, error) {
+func (s *SemanticStrategy) Split(ctx context.Context, text string, fileName string) ([]*Chunk, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (s *SemanticStrategy) Split(ctx context.Context, text string) ([]*schema.Do
 		}
 		docs = append(docs, newDocument(c, "", 0))
 	}
-	return docs, nil
+	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
 }
 
 func semanticSplitDoubleMerging(

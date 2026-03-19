@@ -7,55 +7,48 @@ import (
 	"os"
 
 	"github.com/jettjia/igo-pkg/aipkg/rag/split"
-	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 func main() {
 	ctx := context.Background()
 
-	text, err := os.ReadFile("test-2.md")
+	fileName := "test-3.md"
+	text, err := os.ReadFile(fileName)
 	if err != nil {
 		panic(err)
 	}
 	input := string(text)
 
-	runFixedSize(ctx, input)
-	runRecursiveCharacter(ctx, input)
-	runSemantic(ctx, input)
-	runDocumentStructure(ctx, input)
-}
-
-type chunkRecord struct {
-	Index   int    `json:"index"`
-	Title   string `json:"title,omitempty"`
-	Depth   int    `json:"depth,omitempty"`
-	CharLen int    `json:"char_len"`
-	Content string `json:"content"`
+	runFixedSize(ctx, input, fileName)
+	runRecursiveCharacter(ctx, input, fileName)
+	runSemantic(ctx, input, fileName)
+	runDocumentStructure(ctx, input, fileName)
 }
 
 type resultFile struct {
-	Type                 string        `json:"type"`
-	ChunkSize            int           `json:"chunk_size"`
-	OverlapRatio         float64       `json:"overlap_ratio"`
-	RemoveURLAndEmail    bool          `json:"remove_url_and_email"`
-	NormalizeWhitespace  bool          `json:"normalize_whitespace"`
-	TrimSpace            bool          `json:"trim_space"`
-	ChunkOverlap         int           `json:"chunk_overlap,omitempty"`
-	SemanticThreshold    float64       `json:"semantic_threshold,omitempty"`
-	SemanticMode         string        `json:"semantic_mode,omitempty"`
-	SemanticBufferSize   int           `json:"semantic_buffer_size,omitempty"`
-	SemanticPercentile   int           `json:"semantic_breakpoint_percentile,omitempty"`
-	SemanticMinChunk     int           `json:"semantic_min_chunk_size,omitempty"`
-	SemanticInitial      float64       `json:"semantic_initial_threshold,omitempty"`
-	SemanticAppending    float64       `json:"semantic_appending_threshold,omitempty"`
-	SemanticMerging      float64       `json:"semantic_merging_threshold,omitempty"`
-	SemanticMaxChunk     int           `json:"semantic_max_chunk_size,omitempty"`
-	SemanticMergingRange int           `json:"semantic_merging_range,omitempty"`
-	DocumentMaxDepth     int           `json:"document_max_depth,omitempty"`
-	SkipEmptyHeadings    bool          `json:"skip_empty_headings,omitempty"`
-	Chunks               []chunkRecord `json:"chunks"`
-	TotalChunks          int           `json:"total_chunks"`
-	TotalChars           int           `json:"total_chars"`
+	Type                 string         `json:"type"`
+	FileName             string         `json:"file_name"`
+	ChunkSize            int            `json:"chunk_size"`
+	OverlapRatio         float64        `json:"overlap_ratio"`
+	RemoveURLAndEmail    bool           `json:"remove_url_and_email"`
+	NormalizeWhitespace  bool           `json:"normalize_whitespace"`
+	TrimSpace            bool           `json:"trim_space"`
+	ChunkOverlap         int            `json:"chunk_overlap,omitempty"`
+	SemanticThreshold    float64        `json:"semantic_threshold,omitempty"`
+	SemanticMode         string         `json:"semantic_mode,omitempty"`
+	SemanticBufferSize   int            `json:"semantic_buffer_size,omitempty"`
+	SemanticPercentile   int            `json:"semantic_breakpoint_percentile,omitempty"`
+	SemanticMinChunk     int            `json:"semantic_min_chunk_size,omitempty"`
+	SemanticInitial      float64        `json:"semantic_initial_threshold,omitempty"`
+	SemanticAppending    float64        `json:"semantic_appending_threshold,omitempty"`
+	SemanticMerging      float64        `json:"semantic_merging_threshold,omitempty"`
+	SemanticMaxChunk     int            `json:"semantic_max_chunk_size,omitempty"`
+	SemanticMergingRange int            `json:"semantic_merging_range,omitempty"`
+	DocumentMaxDepth     int            `json:"document_max_depth,omitempty"`
+	SkipEmptyHeadings    bool           `json:"skip_empty_headings,omitempty"`
+	Chunks               []*split.Chunk `json:"chunks"`
+	TotalChunks          int            `json:"total_chunks"`
+	TotalChars           int            `json:"total_chars"`
 }
 
 func writeResult(filename string, r resultFile) {
@@ -68,27 +61,17 @@ func writeResult(filename string, r resultFile) {
 	}
 }
 
-func toRecords(docs []*schema.Document) ([]chunkRecord, int) {
-	records := make([]chunkRecord, 0, len(docs))
-	totalChars := 0
-	for i, d := range docs {
-		if d == nil {
-			continue
+func getTotalChars(chunks []*split.Chunk) int {
+	total := 0
+	for _, c := range chunks {
+		if c != nil {
+			total += len([]rune(c.SliceContent.Text))
 		}
-		cl := len([]rune(d.Content))
-		totalChars += cl
-		records = append(records, chunkRecord{
-			Index:   i,
-			Title:   d.Title,
-			Depth:   d.Depth,
-			CharLen: cl,
-			Content: d.Content,
-		})
 	}
-	return records, totalChars
+	return total
 }
 
-func runFixedSize(ctx context.Context, input string) {
+func runFixedSize(ctx context.Context, input string, fileName string) {
 	s := split.NewFixedSizeStrategy()
 	s.ChunkSize = 400
 	s.ChunkOverlap = 0
@@ -96,55 +79,55 @@ func runFixedSize(ctx context.Context, input string) {
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
 
-	docs, err := s.Split(ctx, input)
+	docs, err := s.Split(ctx, input, fileName)
 	if err != nil {
 		panic(err)
 	}
 
-	records, totalChars := toRecords(docs)
 	writeResult("fixed_size.json", resultFile{
 		Type:                string(s.GetType()),
+		FileName:            fileName,
 		ChunkSize:           s.ChunkSize,
 		OverlapRatio:        s.OverlapRatio,
 		RemoveURLAndEmail:   s.RemoveURLAndEmail,
 		NormalizeWhitespace: s.NormalizeWhitespace,
 		TrimSpace:           s.TrimSpace,
 		ChunkOverlap:        s.ChunkOverlap,
-		Chunks:              records,
-		TotalChunks:         len(records),
-		TotalChars:          totalChars,
+		Chunks:              docs,
+		TotalChunks:         len(docs),
+		TotalChars:          getTotalChars(docs),
 	})
-	fmt.Printf("FixedSizeStrategy chunks=%d -> fixed_size.json\n", len(records))
+	fmt.Printf("FixedSizeStrategy chunks=%d -> fixed_size.json\n", len(docs))
 }
 
-func runRecursiveCharacter(ctx context.Context, input string) {
+func runRecursiveCharacter(ctx context.Context, input string, fileName string) {
 	s := split.NewRecursiveCharacterStrategy()
 	s.ChunkSize = 400
 	s.OverlapRatio = 0.15
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
 
-	docs, err := s.Split(ctx, input)
+	docs, err := s.Split(ctx, input, fileName)
 	if err != nil {
 		panic(err)
 	}
 
-	records, totalChars := toRecords(docs)
 	writeResult("recursive_character.json", resultFile{
 		Type:                string(s.GetType()),
+		FileName:            fileName,
 		ChunkSize:           s.ChunkSize,
 		OverlapRatio:        s.OverlapRatio,
 		RemoveURLAndEmail:   s.RemoveURLAndEmail,
 		NormalizeWhitespace: s.NormalizeWhitespace,
 		TrimSpace:           s.TrimSpace,
-		Chunks:              records,
-		TotalChunks:         len(records),
-		TotalChars:          totalChars,
+		Chunks:              docs,
+		TotalChunks:         len(docs),
+		TotalChars:          getTotalChars(docs),
 	})
-	fmt.Printf("RecursiveCharacterStrategy chunks=%d -> recursive_character.json\n", len(records))
+	fmt.Printf("RecursiveCharacterStrategy chunks=%d -> recursive_character.json\n", len(docs))
 }
 
-func runSemantic(ctx context.Context, input string) {
+func runSemantic(ctx context.Context, input string, fileName string) {
 	s := split.NewSemanticStrategy()
 	s.ChunkSize = 400
 	s.OverlapRatio = 0.1
@@ -158,14 +141,14 @@ func runSemantic(ctx context.Context, input string) {
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
 
-	docs, err := s.Split(ctx, input)
+	docs, err := s.Split(ctx, input, fileName)
 	if err != nil {
 		panic(err)
 	}
 
-	records, totalChars := toRecords(docs)
 	writeResult("semantic.json", resultFile{
 		Type:                 string(s.GetType()),
+		FileName:             fileName,
 		ChunkSize:            s.ChunkSize,
 		OverlapRatio:         s.OverlapRatio,
 		RemoveURLAndEmail:    s.RemoveURLAndEmail,
@@ -180,14 +163,14 @@ func runSemantic(ctx context.Context, input string) {
 		SemanticMerging:      s.MergingThreshold,
 		SemanticMaxChunk:     s.MaxChunkSize,
 		SemanticMergingRange: s.MergingRange,
-		Chunks:               records,
-		TotalChunks:          len(records),
-		TotalChars:           totalChars,
+		Chunks:               docs,
+		TotalChunks:          len(docs),
+		TotalChars:           getTotalChars(docs),
 	})
-	fmt.Printf("SemanticStrategy chunks=%d -> semantic.json\n", len(records))
+	fmt.Printf("SemanticStrategy chunks=%d -> semantic.json\n", len(docs))
 }
 
-func runDocumentStructure(ctx context.Context, input string) {
+func runDocumentStructure(ctx context.Context, input string, fileName string) {
 	s := split.NewDocumentStructureStrategy()
 	s.ChunkSize = 400
 	s.OverlapRatio = 0.1
@@ -197,14 +180,14 @@ func runDocumentStructure(ctx context.Context, input string) {
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
 
-	docs, err := s.Split(ctx, input)
+	docs, err := s.Split(ctx, input, fileName)
 	if err != nil {
 		panic(err)
 	}
 
-	records, totalChars := toRecords(docs)
 	writeResult("document_structure.json", resultFile{
 		Type:                string(s.GetType()),
+		FileName:            fileName,
 		ChunkSize:           s.ChunkSize,
 		OverlapRatio:        s.OverlapRatio,
 		RemoveURLAndEmail:   s.RemoveURLAndEmail,
@@ -213,9 +196,9 @@ func runDocumentStructure(ctx context.Context, input string) {
 		SemanticThreshold:   s.SemanticThreshold,
 		DocumentMaxDepth:    s.MaxDepth,
 		SkipEmptyHeadings:   s.SkipEmptyHeadings,
-		Chunks:              records,
-		TotalChunks:         len(records),
-		TotalChars:          totalChars,
+		Chunks:              docs,
+		TotalChunks:         len(docs),
+		TotalChars:          getTotalChars(docs),
 	})
-	fmt.Printf("DocumentStructureStrategy chunks=%d -> document_structure.json\n", len(records))
+	fmt.Printf("DocumentStructureStrategy chunks=%d -> document_structure.json\n", len(docs))
 }

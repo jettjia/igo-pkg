@@ -44,7 +44,7 @@ func (s *RecursiveCharacterStrategy) Validate() error {
 	return nil
 }
 
-func (s *RecursiveCharacterStrategy) Split(ctx context.Context, text string) ([]*schema.Document, error) {
+func (s *RecursiveCharacterStrategy) Split(ctx context.Context, text string, fileName string) ([]*Chunk, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (s *RecursiveCharacterStrategy) Split(ctx context.Context, text string) ([]
 		}
 		docs = append(docs, newDocument(c, "", 0))
 	}
-	return docs, nil
+	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
 }
 
 func recursiveSplit(text string, separators []string, chunkSize int) []string {
