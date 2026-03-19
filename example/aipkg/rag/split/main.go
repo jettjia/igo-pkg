@@ -141,12 +141,14 @@ type perfMetrics struct {
 }
 
 func runPerfReport(ctx context.Context, input string, fileName string) perfReport {
-	iters := 50
+	iters := 5
 	if v := os.Getenv("SPLIT_PERF_ITERS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			iters = n
 		}
 	}
+
+	targetStrategy := os.Getenv("SPLIT_PERF_STRATEGY")
 
 	var snap runtime.MemStats
 	runtime.ReadMemStats(&snap)
@@ -179,10 +181,15 @@ func runPerfReport(ctx context.Context, input string, fileName string) perfRepor
 	startAll := time.Now()
 
 	items := make([]perfItem, 0, 4)
-	items = append(items, measureStrategy(ctx, "fixed_size", newFixedSizePerfStrategy(), input, fileName, iters))
-	items = append(items, measureStrategy(ctx, "recursive_character", newRecursivePerfStrategy(), input, fileName, iters))
-	items = append(items, measureStrategy(ctx, "semantic", newSemanticPerfStrategy(), input, fileName, iters))
-	items = append(items, measureStrategy(ctx, "document_structure", newDocumentStructurePerfStrategy(), input, fileName, iters))
+	addItem := func(name string, strategy perfStrategy) {
+		if targetStrategy == "" || targetStrategy == name {
+			items = append(items, measureStrategy(ctx, name, strategy, input, fileName, iters))
+		}
+	}
+	addItem("fixed_size", newFixedSizePerfStrategy())
+	addItem("recursive_character", newRecursivePerfStrategy())
+	addItem("semantic", newSemanticPerfStrategy())
+	addItem("document_structure", newDocumentStructurePerfStrategy())
 
 	report.Items = items
 	report.Summary = perfSummary{TotalDurationMs: time.Since(startAll).Milliseconds()}
