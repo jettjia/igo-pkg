@@ -16,7 +16,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	fileName := "test-100.md"
+	fileName := "test-3.md"
 	text, err := os.ReadFile(fileName)
 	if err != nil {
 		panic(err)

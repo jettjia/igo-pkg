@@ -222,12 +222,32 @@ func semanticSplitDoubleMerging(
 		mergingRange = 2
 	}
 
+	cache := newTfidfCache(len(sentences) * 2)
+
+	precomputedVectors := precomputeTfidfVectors(sentences)
+	for text, vec := range precomputedVectors {
+		cache.setPrecomputed(text, vec)
+	}
+
+	getVector := func(text string) sparseVector {
+		if vec, ok := cache.get(text); ok {
+			return vec
+		}
+		vecs := buildTfidfVectors([]string{text})
+		if len(vecs) > 0 {
+			cache.put(text, vecs[0])
+			return vecs[0]
+		}
+		return sparseVector{}
+	}
+
 	similarity := func(a, b string) float64 {
-		vecs := buildTfidfVectors([]string{a, b})
-		if len(vecs) < 2 {
+		vecA := getVector(a)
+		vecB := getVector(b)
+		if len(vecA) == 0 || len(vecB) == 0 {
 			return 0
 		}
-		return cosineSimilarity(vecs[0], vecs[1])
+		return cosineSimilarity(vecA, vecB)
 	}
 
 	sepLen := runeLen(mergingSeparator)
@@ -964,6 +984,106 @@ func splitLongSentence(sentence string, chunkSize int) []string {
 }
 
 type sparseVector map[string]float64
+
+type tfidfCache struct {
+	cache       map[string]sparseVector
+	maxSize     int
+	order       []string
+	precomputed map[string]sparseVector
+}
+
+func newTfidfCache(maxSize int) *tfidfCache {
+	if maxSize <= 0 {
+		maxSize = 1024
+	}
+	return &tfidfCache{
+		cache:       make(map[string]sparseVector, maxSize),
+		maxSize:     maxSize,
+		order:       make([]string, 0, maxSize),
+		precomputed: make(map[string]sparseVector),
+	}
+}
+
+func (c *tfidfCache) get(text string) (sparseVector, bool) {
+	if vec, ok := c.cache[text]; ok {
+		return vec, true
+	}
+	if vec, ok := c.precomputed[text]; ok {
+		c.cache[text] = vec
+		return vec, true
+	}
+	return nil, false
+}
+
+func (c *tfidfCache) put(text string, vec sparseVector) {
+	if len(c.order) >= c.maxSize {
+		old := c.order[0]
+		delete(c.cache, old)
+		c.order = c.order[1:]
+	}
+	c.cache[text] = vec
+	c.order = append(c.order, text)
+}
+
+func (c *tfidfCache) setPrecomputed(text string, vec sparseVector) {
+	c.precomputed[text] = vec
+}
+
+func precomputeTfidfVectors(sentences []string) map[string]sparseVector {
+	if len(sentences) == 0 {
+		return nil
+	}
+
+	type docTokens struct {
+		counts map[string]int
+		total  int
+	}
+
+	docs := make([]docTokens, 0, len(sentences))
+	df := make(map[string]int, 1024)
+
+	for _, s := range sentences {
+		tokens := tokenizeForTfidf(s)
+		counts := make(map[string]int, len(tokens))
+		seen := make(map[string]struct{}, len(tokens))
+		for _, tok := range tokens {
+			if tok == "" {
+				continue
+			}
+			counts[tok]++
+			if _, ok := seen[tok]; !ok {
+				seen[tok] = struct{}{}
+				df[tok]++
+			}
+		}
+		docs = append(docs, docTokens{
+			counts: counts,
+			total:  len(tokens),
+		})
+	}
+
+	N := float64(len(docs))
+	idf := make(map[string]float64, len(df))
+	for term, freq := range df {
+		idf[term] = math.Log((N+1)/(float64(freq)+1)) + 1
+	}
+
+	result := make(map[string]sparseVector, len(sentences))
+	for i, s := range sentences {
+		d := docs[i]
+		vec := make(sparseVector, len(d.counts))
+		if d.total > 0 {
+			total := float64(d.total)
+			for term, cnt := range d.counts {
+				tf := float64(cnt) / total
+				vec[term] = tf * idf[term]
+			}
+		}
+		result[s] = vec
+	}
+
+	return result
+}
 
 func buildTfidfVectors(sentences []string) []sparseVector {
 	if len(sentences) == 0 {
