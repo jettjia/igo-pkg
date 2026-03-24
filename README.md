@@ -45,6 +45,7 @@ Simpler, faster, and stronger.
     * rag
       * chunk text split
       * docpipeline document processing pipeline
+      * contextcompact context compact
       * graph document auto graph
       * reranker rrf algorithm and rerank
       * retriever document retriever

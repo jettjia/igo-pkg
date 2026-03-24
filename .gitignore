@@ -18,6 +18,7 @@ go.work.sum
 main
 tmp/
 report
+*.exe
 
 # other
 **/*.tgz
