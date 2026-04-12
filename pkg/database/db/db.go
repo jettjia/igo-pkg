@@ -9,6 +9,7 @@ import (
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
@@ -125,6 +126,8 @@ func (db *DB) getConn() *gorm.DB {
 		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=%s",
 			db.Conf.Host, db.Conf.User, db.Conf.Password, db.Conf.Db, db.Conf.Port, getTimeZone())
 		dialector = postgres.Open(dsn)
+	case "sqlite":
+		dialector = sqlite.Open(db.Conf.Db)
 	default:
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
 			db.Conf.User, db.Conf.Password, db.Conf.Host, db.Conf.Port, db.Conf.Db, db.Conf.DbChar)
