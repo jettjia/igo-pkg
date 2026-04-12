@@ -1,27 +1,23 @@
 package data
 
 import (
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/jettjia/igo-pkg/pkg/database/dbresolver"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 type Data struct {
-	Mysql          *gorm.DB
-	RedisCli       redis.UniversalClient
-	SearchCli      *elasticsearch.Client
-	SearchCliTyped *elasticsearch.TypedClient
-	DBManager      *dbresolver.DBManager
+	Mysql     *gorm.DB
+	RedisCli  redis.UniversalClient
+	DBManager *dbresolver.DBManager
 	// Dynamic Tenant Database Manager
 	DBManagerDynamic *dbresolver.DBManagerDynamic
 }
 
-func NewData(mysqlDB *gorm.DB, redisCli redis.UniversalClient, searchCli *elasticsearch.Client) *Data {
+func NewData(mysqlDB *gorm.DB, redisCli redis.UniversalClient) *Data {
 	return &Data{
-		Mysql:     mysqlDB,
-		RedisCli:  redisCli,
-		SearchCli: searchCli,
+		Mysql:    mysqlDB,
+		RedisCli: redisCli,
 	}
 }
 
@@ -47,20 +43,6 @@ func WithMysql(mysqlDB *gorm.DB) Option {
 func WithRedis(redisCli redis.UniversalClient) Option {
 	return func(d *Data) {
 		d.RedisCli = redisCli
-	}
-}
-
-// WithSearch Set up elasticsearch connection
-func WithSearch(searchCli *elasticsearch.Client) Option {
-	return func(d *Data) {
-		d.SearchCli = searchCli
-	}
-}
-
-// WithSearch Set up elasticsearchTyped connection
-func WithSearchTyped(searchCli *elasticsearch.TypedClient) Option {
-	return func(d *Data) {
-		d.SearchCliTyped = searchCli
 	}
 }
 

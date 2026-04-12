@@ -9,7 +9,6 @@ import (
 	"github.com/jettjia/igo-pkg/aipkg/models/rerank"
 	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 	"github.com/jettjia/igo-pkg/aipkg/schema"
-	"github.com/jettjia/igo-pkg/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,5 +70,5 @@ func Test_NewModelReranker(t *testing.T) {
 	assert.Len(t, resp.SortedData, 2)
 
 	// 打印结果
-	fmt.Println(util.PrintJson(resp))
+	fmt.Println(resp)
 }

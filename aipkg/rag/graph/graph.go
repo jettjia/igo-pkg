@@ -15,7 +15,7 @@ import (
 	"github.com/jettjia/igo-pkg/aipkg/pkg/common"
 	"github.com/jettjia/igo-pkg/aipkg/pkg/logger"
 	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
-	config "github.com/jettjia/igo-pkg/pkg/conf"
+	config "github.com/jettjia/igo-pkg/aipkg/conf"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -7,7 +7,6 @@ import (
 type Client struct {
 	sdk.Client
 	Config *sdk.Config
-	ES     *sdk.ES
 	ZS     *sdk.ZS
 	MQ     *sdk.MQ
 	OTEL   *sdk.OTEL
@@ -25,16 +24,6 @@ func NewClientCfg(config *sdk.Config) (client *Client, err error) {
 		Config: config,
 	}
 	client.WithConfig(config)
-
-	return
-}
-
-func NewClientES(config *sdk.Config, es *sdk.ES) (client *Client, err error) {
-	client = &Client{
-		Config: config,
-		ES:     es,
-	}
-	client.WithConfig(config).WithES(es)
 
 	return
 }

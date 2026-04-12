@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/jettjia/igo-pkg/aipkg/models/chat"
-	config "github.com/jettjia/igo-pkg/pkg/conf"
+	config "github.com/jettjia/igo-pkg/aipkg/conf"
 	"gopkg.in/yaml.v3"
 )
 

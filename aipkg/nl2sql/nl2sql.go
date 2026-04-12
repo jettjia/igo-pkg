@@ -10,7 +10,7 @@ import (
 	"github.com/jettjia/igo-pkg/aipkg/pkg/logger"
 	"github.com/jettjia/igo-pkg/aipkg/pkg/types"
 	"github.com/jettjia/igo-pkg/aipkg/schema"
-	config "github.com/jettjia/igo-pkg/pkg/conf"
+	config "github.com/jettjia/igo-pkg/aipkg/conf"
 )
 
 type NL2SQL interface {

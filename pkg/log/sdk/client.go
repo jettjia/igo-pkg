@@ -2,7 +2,6 @@ package sdk
 
 type Client struct {
 	Config     *Config // basic log configuration information
-	ConfigES   *ES     // elasticsearch
 	ConfigZS   *ZS     // zincsearch
 	ConfigMQ   *MQ     // MQ
 	ConfigOTEL *OTEL   // OTEL
@@ -10,11 +9,6 @@ type Client struct {
 
 func (c *Client) WithConfig(config *Config) *Client {
 	c.Config = config
-	return c
-}
-
-func (c *Client) WithES(config *ES) *Client {
-	c.ConfigES = config
 	return c
 }
 

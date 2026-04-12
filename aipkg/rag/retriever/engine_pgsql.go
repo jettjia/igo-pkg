@@ -8,7 +8,7 @@ import (
 
 	"github.com/jettjia/igo-pkg/aipkg/pkg/rrf"
 	"github.com/jettjia/igo-pkg/aipkg/schema"
-	"github.com/jettjia/igo-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/util"
 	"github.com/pgvector/pgvector-go"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

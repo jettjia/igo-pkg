@@ -70,12 +70,6 @@ func (lcfg *Client) initLogger(cfg *sdk.Config) *logrus.Logger {
 			logHandle.Hooks.Add(mqHook)
 		}
 		return logHandle
-	case enum.ES.Index():
-		esh, err := newEsHook(lcfg.Config.LogName, lcfg.ConfigES.EsAddrs, lcfg.ConfigES.EsUser, lcfg.ConfigES.EsPassword)
-		if err == nil {
-			logHandle.Hooks.Add(esh)
-		}
-		return logHandle
 	case enum.ZS.Index():
 		zsh, err := newZsHook(lcfg.Config.LogName, lcfg.ConfigZS.ZsAddrs, lcfg.ConfigZS.ZsUser, lcfg.ConfigZS.ZsPassword)
 		if err == nil {

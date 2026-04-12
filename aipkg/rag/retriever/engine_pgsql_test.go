@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/jettjia/igo-pkg/aipkg/schema"
-	"github.com/jettjia/igo-pkg/pkg/util"
+	"github.com/jettjia/igo-pkg/aipkg/util"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

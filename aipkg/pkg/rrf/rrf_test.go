@@ -7,7 +7,6 @@ import (
 
 	"github.com/jettjia/igo-pkg/aipkg/pkg/ptr"
 	"github.com/jettjia/igo-pkg/aipkg/schema"
-	"github.com/jettjia/igo-pkg/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -185,5 +184,5 @@ func TestRRF_Rerank_DuplicateDocs(t *testing.T) {
 	assert.Contains(t, []string{"doc2", "doc3"}, resp.SortedData[1].Document.ID)
 	assert.Contains(t, []string{"doc2", "doc3"}, resp.SortedData[2].Document.ID)
 
-	fmt.Println(util.PrintJson(resp))
+	fmt.Println(resp)
 }

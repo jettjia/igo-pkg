@@ -50,22 +50,6 @@ func NewLoggerServer(conf *conf.Config) *logrus.Logger {
 		return logClient.NewLogger(sdk.WithLogLevel(conf.Log.LogLevel), sdk.WithLogSendType(enum.MQ))
 	}
 
-	if conf.Log.LogOut == int(enum.ES) {
-		esConfig := &sdk.ES{
-			EsAddrs:    []string{conf.Search.Addr},
-			EsUser:     conf.Search.Username,
-			EsPassword: conf.Search.Password,
-		}
-		logClient, err := logv1.NewClientES(config, esConfig)
-		if err != nil {
-			goto defaultCli
-		}
-		cli := logClient.NewLogger(sdk.WithLogLevel(conf.Log.LogLevel), sdk.WithLogSendType(enum.ES))
-		if cli == nil {
-			goto defaultCli
-		}
-	}
-
 	if conf.Log.LogOut == int(enum.ZS) {
 		zsConfig := &sdk.ZS{
 			ZsAddrs:    conf.Search.Addr,
