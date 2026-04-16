@@ -40,6 +40,77 @@ func TestFixedSizeStrategy_PreprocessOptions(t *testing.T) {
 	require.NotContains(t, docs[0].SliceContent.Text, "\n\n\n")
 }
 
+func TestFixedSizeStrategy_RemoveImageURL(t *testing.T) {
+	s := NewFixedSizeStrategy()
+	s.ChunkSize = 500
+	s.ChunkOverlap = 0
+	s.RemoveImageURL = true
+	s.TrimSpace = true
+
+	text := "这是一个文档 ![](abc.jpg) 包含图片 ![alt](def.png) 结束"
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.Len(t, docs, 1)
+	// 图片链接应该被移除
+	require.NotContains(t, docs[0].SliceContent.Text, "![")
+	require.NotContains(t, docs[0].SliceContent.Text, "abc.jpg")
+	require.NotContains(t, docs[0].SliceContent.Text, "def.png")
+	// 普通文本应该保留
+	require.Contains(t, docs[0].SliceContent.Text, "这是一个文档")
+	require.Contains(t, docs[0].SliceContent.Text, "包含图片")
+	require.Contains(t, docs[0].SliceContent.Text, "结束")
+}
+
+func TestRecursiveCharacterStrategy_RemoveImageURL(t *testing.T) {
+	s := NewRecursiveCharacterStrategy()
+	s.ChunkSize = 500
+	s.OverlapRatio = 0.1
+	s.RemoveImageURL = true
+	s.TrimSpace = true
+
+	text := "第一段内容 ![](img1.jpg)。\n\n第二段 ![alt2](img2.jpg) 继续。"
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotEmpty(t, docs)
+
+	joined := ""
+	for _, d := range docs {
+		joined += d.SliceContent.Text + " "
+	}
+	// 所有图片链接应该被移除
+	require.NotContains(t, joined, "![")
+	require.NotContains(t, joined, "img1.jpg")
+	require.NotContains(t, joined, "img2.jpg")
+	// 普通文本应该保留
+	require.Contains(t, joined, "第一段内容")
+	require.Contains(t, joined, "第二段")
+}
+
+func TestSemanticStrategy_RemoveImageURL(t *testing.T) {
+	s := NewSemanticStrategy()
+	s.ChunkSize = 200
+	s.OverlapRatio = 0.1
+	s.RemoveImageURL = true
+	s.TrimSpace = true
+
+	text := "文本开始 ![](start.jpg) 中间内容 ![alt](mid.png) 文本结束"
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotEmpty(t, docs)
+
+	joined := ""
+	for _, d := range docs {
+		joined += d.SliceContent.Text + " "
+	}
+	// 图片链接应该被移除
+	require.NotContains(t, joined, "![")
+	require.NotContains(t, joined, "start.jpg")
+	require.NotContains(t, joined, "mid.png")
+	// 文本应该保留
+	require.Contains(t, joined, "文本开始")
+	require.Contains(t, joined, "文本结束")
+}
+
 func TestRecursiveCharacterStrategy_SeparatorsPriority(t *testing.T) {
 	s := NewRecursiveCharacterStrategy()
 	s.ChunkSize = 40
