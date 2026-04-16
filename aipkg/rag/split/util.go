@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	urlRegex   = regexp.MustCompile(`https?://[^\s]+`)
-	emailRegex = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
-	tableRegex = regexp.MustCompile(`(?s)<table>.*?</table>`)
-	pageRegex  = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
+	urlRegex       = regexp.MustCompile(`https?://[^\s]+`)
+	emailRegex     = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+	imageURLRegex  = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
+	tableRegex     = regexp.MustCompile(`(?s)<table>.*?</table>`)
+	pageRegex      = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
 
 	// 用于识别预处理阶段生成的简短占位符
 	tablePlaceholderRegex = regexp.MustCompile(`HTML_TABLE_PLACEHOLDER_(\d+)`)
@@ -57,6 +58,10 @@ func preProcessText(text string, base *StrategyBase) string {
 	if base.RemoveURLAndEmail {
 		processed = urlRegex.ReplaceAllString(processed, "")
 		processed = emailRegex.ReplaceAllString(processed, "")
+	}
+
+	if base.RemoveImageURL {
+		processed = imageURLRegex.ReplaceAllString(processed, "")
 	}
 
 	processed = strings.ReplaceAll(processed, "\r\n", "\n")

@@ -20,6 +20,7 @@ type StrategyBase struct {
 	ChunkSize           int     // 单个块最大字符数（按 rune 计数）
 	OverlapRatio        float64 // 相邻块重叠比例，范围建议 0.1~0.2
 	RemoveURLAndEmail   bool    // 是否移除 URL 和邮箱
+	RemoveImageURL      bool    // 是否移除 Markdown 图片 URL，如 ![](xxx.jpg)
 	NormalizeWhitespace bool    // 是否替换连续空格/换行/制表符
 	TrimSpace           bool    // 是否对块内容做 TrimSpace
 

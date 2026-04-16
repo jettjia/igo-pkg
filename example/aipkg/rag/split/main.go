@@ -48,6 +48,7 @@ type resultFile struct {
 	ChunkSize            int            `json:"chunk_size"`
 	OverlapRatio         float64        `json:"overlap_ratio"`
 	RemoveURLAndEmail    bool           `json:"remove_url_and_email"`
+	RemoveImageURL       bool           `json:"remove_image_url"`
 	NormalizeWhitespace  bool           `json:"normalize_whitespace"`
 	TrimSpace            bool           `json:"trim_space"`
 	ChunkOverlap         int            `json:"chunk_overlap,omitempty"`
@@ -227,12 +228,14 @@ func newRecursivePerfStrategy() perfStrategy {
 	s.OverlapRatio = 0.15
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
+	s.RemoveImageURL = true
 	return perfStrategy{
 		Splitter: s,
 		Config: map[string]any{
 			"chunk_size":           s.ChunkSize,
 			"overlap_ratio":        s.OverlapRatio,
 			"remove_url_and_email": s.RemoveURLAndEmail,
+			"remove_image_url":      s.RemoveImageURL,
 			"normalize_whitespace": s.NormalizeWhitespace,
 			"trim_space":           s.TrimSpace,
 		},
@@ -409,6 +412,34 @@ func runRecursiveCharacter(ctx context.Context, input string, fileName string) {
 		TotalChars:          getTotalChars(docs),
 	})
 	fmt.Printf("RecursiveCharacterStrategy chunks=%d -> recursive_character.json\n", len(docs))
+
+	// 测试 RemoveImageURL 功能
+	s2 := split.NewRecursiveCharacterStrategy()
+	s2.ChunkSize = 400
+	s2.OverlapRatio = 0.15
+	s2.NormalizeWhitespace = true
+	s2.TrimSpace = true
+	s2.RemoveImageURL = true // 开启移除图片 URL
+
+	docs2, err := s2.Split(ctx, input, fileName)
+	if err != nil {
+		panic(err)
+	}
+
+	writeResult("recursive_character_no_image.json", resultFile{
+		Type:                string(s2.GetType()),
+		FileName:            fileName,
+		ChunkSize:           s2.ChunkSize,
+		OverlapRatio:        s2.OverlapRatio,
+		RemoveURLAndEmail:   s2.RemoveURLAndEmail,
+		RemoveImageURL:      s2.RemoveImageURL,
+		NormalizeWhitespace: s2.NormalizeWhitespace,
+		TrimSpace:           s2.TrimSpace,
+		Chunks:              docs2,
+		TotalChunks:         len(docs2),
+		TotalChars:          getTotalChars(docs2),
+	})
+	fmt.Printf("RecursiveCharacterStrategy (RemoveImageURL=true) chunks=%d -> recursive_character_no_image.json\n", len(docs2))
 }
 
 func runSemantic(ctx context.Context, input string, fileName string) {
