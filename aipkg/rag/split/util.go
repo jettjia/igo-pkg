@@ -113,48 +113,121 @@ func tableToMarkdown(tableHTML string) string {
 		return ""
 	}
 
-	var headers []string
-	var dataRows [][]string
-	headerProcessed := false
+	// Collect all rows with their cell info (including rowspan/colspan)
+	type cellInfo struct {
+		text    string
+		rowspan int
+		colspan int
+	}
+	var allRows [][]cellInfo
 
-	var findRows func(*html.Node)
-	findRows = func(n *html.Node) {
+	var processRow func(*html.Node)
+	processRow = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "tr" {
-			var cells []string
-			isHeaderRow := !headerProcessed
-
-			// In the header row, look for <th> or <td>
-			if isHeaderRow {
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					if c.Type == html.ElementNode && (c.Data == "th" || c.Data == "td") {
-						headers = append(headers, strings.TrimSpace(getNodeText(c)))
+			var cells []cellInfo
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.ElementNode && (c.Data == "th" || c.Data == "td") {
+					rowspan := 1
+					colspan := 1
+					for _, attr := range c.Attr {
+						if attr.Key == "rowspan" {
+							if v, err := strconv.Atoi(attr.Val); err == nil {
+								rowspan = v
+							}
+						}
+						if attr.Key == "colspan" {
+							if v, err := strconv.Atoi(attr.Val); err == nil {
+								colspan = v
+							}
+						}
 					}
-				}
-				headerProcessed = true
-			} else { // For data rows, look for <td>
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					if c.Type == html.ElementNode && c.Data == "td" {
-						cells = append(cells, strings.TrimSpace(getNodeText(c)))
-					}
-				}
-				if len(cells) > 0 {
-					dataRows = append(dataRows, cells)
+					cells = append(cells, cellInfo{
+						text:    strings.TrimSpace(getNodeText(c)),
+						rowspan: rowspan,
+						colspan: colspan,
+					})
 				}
 			}
+			if len(cells) > 0 {
+				allRows = append(allRows, cells)
+			}
 		}
-
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findRows(c)
+			processRow(c)
+		}
+	}
+	processRow(doc)
+
+	if len(allRows) == 0 {
+		return ""
+	}
+
+	// Determine max columns
+	maxCols := 0
+	for _, row := range allRows {
+		colCount := 0
+		for _, cell := range row {
+			colCount += cell.colspan
+		}
+		if colCount > maxCols {
+			maxCols = colCount
 		}
 	}
 
-	findRows(doc)
+	if maxCols == 0 {
+		return ""
+	}
+
+	// Build 2D grid with colspan/rowspan handling
+	grid := make([][]string, len(allRows))
+	for i := range grid {
+		grid[i] = make([]string, maxCols)
+	}
+
+	// Use rowspan grid to track which cells are already filled
+	rowspanGrid := make([][]int, len(allRows))
+	for i := range rowspanGrid {
+		rowspanGrid[i] = make([]int, maxCols)
+	}
+
+	// Fill the grid row by row, handling colspan and rowspan
+	for rowIdx, row := range allRows {
+		colIdx := 0
+		for _, cell := range row {
+			// Skip columns already filled by rowspan from previous rows
+			for colIdx < maxCols && rowspanGrid[rowIdx][colIdx] > 0 {
+				colIdx++
+			}
+			if colIdx >= maxCols {
+				break
+			}
+			// For colspan > 1, only fill the first column with text, leave others empty
+			for c := 0; c < cell.colspan && colIdx + c < maxCols; c++ {
+				if c == 0 {
+					grid[rowIdx][colIdx+c] = cell.text
+				} else {
+					grid[rowIdx][colIdx+c] = "" // Empty placeholder for colspan
+				}
+			}
+			// Mark rowspan for subsequent rows
+			for r := 1; r < cell.rowspan && rowIdx+r < len(allRows); r++ {
+				for c := 0; c < cell.colspan && colIdx+c < maxCols; c++ {
+					rowspanGrid[rowIdx+r][colIdx+c]++
+				}
+			}
+			colIdx += cell.colspan
+		}
+	}
+
+	// First row is header, rest are data rows
+	headers := grid[0]
+	dataRows := grid[1:]
 
 	if len(headers) == 0 && len(dataRows) == 0 {
 		return ""
 	}
 
-	// Build clean Markdown table (like LlamaIndex does)
+	// Build markdown
 	var b strings.Builder
 
 	// Write header row
@@ -162,7 +235,7 @@ func tableToMarkdown(tableHTML string) string {
 		if i > 0 {
 			b.WriteString("|")
 		}
-		b.WriteString(decodeHexEscapes(strings.TrimSpace(h)))
+		b.WriteString(decodeHexEscapes(h))
 	}
 	b.WriteString("\n")
 
@@ -177,11 +250,22 @@ func tableToMarkdown(tableHTML string) string {
 
 	// Write data rows
 	for _, row := range dataRows {
+		// Skip rows that are completely empty (due to rowspan filling)
+		allEmpty := true
+		for _, cell := range row {
+			if cell != "" {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			continue
+		}
 		for i, cell := range row {
 			if i > 0 {
 				b.WriteString("|")
 			}
-			b.WriteString(decodeHexEscapes(strings.TrimSpace(cell)))
+			b.WriteString(decodeHexEscapes(cell))
 		}
 		b.WriteString("\n")
 	}
@@ -354,21 +438,26 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 		// 排序页码
 		sort.Ints(finalPages)
 
-		// 解析表格占位符
+		// 解析表格占位符（可能包含多个表格）
 		var text, table string
 		content := doc.Content
 		if tablePlaceholderRegex.MatchString(content) {
-			// 找到占位符中的索引
-			match := tablePlaceholderRegex.FindStringSubmatch(content)
-			if len(match) > 1 {
-				idx, _ := strconv.Atoi(match[1])
-				if idx >= 0 && idx < len(base.tableCache) {
-					tableHTML := base.tableCache[idx]
-					table = tableToMarkdown(tableHTML)
-					// 移除占位符，保留剩下的文本
-					text = tablePlaceholderRegex.ReplaceAllString(content, "")
+			// 找到所有占位符的索引
+			matches := tablePlaceholderRegex.FindAllStringSubmatch(content, -1)
+			var tables []string
+			for _, match := range matches {
+				if len(match) > 1 {
+					idx, _ := strconv.Atoi(match[1])
+					if idx >= 0 && idx < len(base.tableCache) {
+						tableHTML := base.tableCache[idx]
+						tables = append(tables, tableToMarkdown(tableHTML))
+					}
 				}
 			}
+			// 用换行分隔多个表格
+			table = strings.Join(tables, "\n\n")
+			// 移除所有占位符，保留剩下的文本
+			text = tablePlaceholderRegex.ReplaceAllString(content, "")
 		} else {
 			text = content
 		}
