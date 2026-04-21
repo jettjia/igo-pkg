@@ -16,7 +16,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	fileName := "test-3.md"
+	fileName := "test-error.md"
 	text, err := os.ReadFile(fileName)
 	if err != nil {
 		panic(err)
@@ -235,7 +235,7 @@ func newRecursivePerfStrategy() perfStrategy {
 			"chunk_size":           s.ChunkSize,
 			"overlap_ratio":        s.OverlapRatio,
 			"remove_url_and_email": s.RemoveURLAndEmail,
-			"remove_image_url":      s.RemoveImageURL,
+			"remove_image_url":     s.RemoveImageURL,
 			"normalize_whitespace": s.NormalizeWhitespace,
 			"trim_space":           s.TrimSpace,
 		},

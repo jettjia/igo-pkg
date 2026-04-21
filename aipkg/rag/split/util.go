@@ -3,25 +3,23 @@ package split
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math"
+	"golang.org/x/net/html"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"golang.org/x/net/html"
-
 	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
 
 var (
-	urlRegex       = regexp.MustCompile(`https?://[^\s]+`)
-	emailRegex     = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
-	imageURLRegex  = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
-	tableRegex     = regexp.MustCompile(`(?s)<table>.*?</table>`)
-	pageRegex      = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
+	urlRegex      = regexp.MustCompile(`https?://[^\s]+`)
+	emailRegex    = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+	imageURLRegex = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
+	tableRegex    = regexp.MustCompile(`(?s)<table>.*?</table>`)
+	pageRegex     = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
 
 	// 用于识别预处理阶段生成的简短占位符
 	tablePlaceholderRegex = regexp.MustCompile(`HTML_TABLE_PLACEHOLDER_(\d+)`)
@@ -93,7 +91,23 @@ func getNodeText(n *html.Node) string {
 	return b.String()
 }
 
-func tableToJSON(tableHTML string) string {
+func decodeHexEscapes(s string) string {
+	// Handle \uXXXX unicode escapes that appear in the raw text
+	if !strings.Contains(s, "\\u") {
+		return s
+	}
+	// Regex to find \uXXXX patterns
+	re := regexp.MustCompile(`\\u([0-9a-fA-F]{4})`)
+	return re.ReplaceAllStringFunc(s, func(match string) string {
+		hex := match[2:]
+		if v, err := strconv.ParseUint(hex, 16, 32); err == nil {
+			return string(rune(v))
+		}
+		return match
+	})
+}
+
+func tableToMarkdown(tableHTML string) string {
 	doc, err := html.Parse(strings.NewReader(tableHTML))
 	if err != nil {
 		return ""
@@ -140,22 +154,39 @@ func tableToJSON(tableHTML string) string {
 		return ""
 	}
 
-	var result []map[string]string
-	for _, row := range dataRows {
-		item := make(map[string]string)
-		for i, cell := range row {
-			if i < len(headers) {
-				item[headers[i]] = cell
-			}
+	// Build clean Markdown table (like LlamaIndex does)
+	var b strings.Builder
+
+	// Write header row
+	for i, h := range headers {
+		if i > 0 {
+			b.WriteString("|")
 		}
-		result = append(result, item)
+		b.WriteString(decodeHexEscapes(strings.TrimSpace(h)))
+	}
+	b.WriteString("\n")
+
+	// Write separator row
+	for i := range headers {
+		if i > 0 {
+			b.WriteString("|")
+		}
+		b.WriteString("---")
+	}
+	b.WriteString("\n")
+
+	// Write data rows
+	for _, row := range dataRows {
+		for i, cell := range row {
+			if i > 0 {
+				b.WriteString("|")
+			}
+			b.WriteString(decodeHexEscapes(strings.TrimSpace(cell)))
+		}
+		b.WriteString("\n")
 	}
 
-	jsonBytes, err := json.Marshal(result)
-	if err != nil {
-		return ""
-	}
-	return string(jsonBytes)
+	return b.String()
 }
 
 func applyTrimSpaceIfNeeded(text string, base *StrategyBase) string {
@@ -333,7 +364,7 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 				idx, _ := strconv.Atoi(match[1])
 				if idx >= 0 && idx < len(base.tableCache) {
 					tableHTML := base.tableCache[idx]
-					table = tableToJSON(tableHTML)
+					table = tableToMarkdown(tableHTML)
 					// 移除占位符，保留剩下的文本
 					text = tablePlaceholderRegex.ReplaceAllString(content, "")
 				}
