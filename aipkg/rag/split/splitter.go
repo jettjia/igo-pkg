@@ -30,9 +30,9 @@ type StrategyBase struct {
 
 // SliceContent 切片内容结构
 type SliceContent struct {
-	Title   string `json:"title"`   // 标题内容
-	Text    string `json:"text"`    // 切片内容，文本为字符串序列
-	Table   string `json:"table"`   // 图表为markdown形式的字符串
+	Title   string `json:"title"`   // 标题内容（已合并到 Text，保留字段）
+	Text    string `json:"text"`   // 切片内容，合并了 title + text + table
+	Table   string `json:"table"`   // 表格内容（已合并到 Text，保留字段）
 	Picture string `json:"picture"` // 图片保存路径
 }
 

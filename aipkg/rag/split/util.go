@@ -5,11 +5,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
-	"golang.org/x/net/html"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+
+	"golang.org/x/net/html"
 
 	"github.com/jettjia/igo-pkg/aipkg/schema"
 )
@@ -202,7 +203,7 @@ func tableToMarkdown(tableHTML string) string {
 				break
 			}
 			// For colspan > 1, only fill the first column with text, leave others empty
-			for c := 0; c < cell.colspan && colIdx + c < maxCols; c++ {
+			for c := 0; c < cell.colspan && colIdx+c < maxCols; c++ {
 				if c == 0 {
 					grid[rowIdx][colIdx+c] = cell.text
 				} else {
@@ -439,7 +440,7 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 		sort.Ints(finalPages)
 
 		// 解析表格占位符（可能包含多个表格）
-		var text, table string
+		var tableMD string
 		content := doc.Content
 		if tablePlaceholderRegex.MatchString(content) {
 			// 找到所有占位符的索引
@@ -455,16 +456,23 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 				}
 			}
 			// 用换行分隔多个表格
-			table = strings.Join(tables, "\n\n")
+			tableMD = strings.Join(tables, "\n\n")
 			// 移除所有占位符，保留剩下的文本
-			text = tablePlaceholderRegex.ReplaceAllString(content, "")
-		} else {
-			text = content
+			content = tablePlaceholderRegex.ReplaceAllString(content, "")
 		}
 
-		// 移除内容中的页码标识，保持 text 干净
-		text = pageRegex.ReplaceAllString(text, "")
-		text = applyTrimSpaceIfNeeded(text, &StrategyBase{TrimSpace: true})
+		// 移除内容中的页码标识
+		content = pageRegex.ReplaceAllString(content, "")
+		content = applyTrimSpaceIfNeeded(content, &StrategyBase{TrimSpace: true})
+
+		// 合并 title + text + table 到 text 字段
+		combinedText := content
+		if doc.Title != "" {
+			combinedText = doc.Title + "\n\n" + combinedText
+		}
+		if tableMD != "" {
+			combinedText = combinedText + "\n\n" + tableMD
+		}
 
 		chunk := &Chunk{
 			DocName:    fileName,
@@ -475,9 +483,10 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 			SegmentID:  i + 1,
 			SuperiorID: doc.DocID,
 			SliceContent: SliceContent{
-				Title: doc.Title,
-				Text:  text,
-				Table: table,
+				Title:   "", // 内容已合并到 Text
+				Text:    combinedText,
+				Table:   "", // 内容已合并到 Text
+				Picture: "",
 			},
 		}
 		chunks = append(chunks, chunk)

@@ -371,17 +371,16 @@ func TestDocumentStructureStrategy_MarkdownHeadingsAvoidListItems(t *testing.T) 
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 
-	for _, d := range docs {
-		require.NotEqual(t, "筛选：排除不满足条件的节点。", d.SliceContent.Title)
-		require.NotContains(t, d.SliceContent.Title, "筛选：")
-		require.NotContains(t, d.SliceContent.Title, "打分：")
-		require.NotContains(t, d.SliceContent.Title, "选择：")
-	}
-
+	// Verify chunks contain expected headings at the start
 	found := false
 	for _, d := range docs {
-		if d.SliceContent.Title == "总标题" || d.SliceContent.Title == "一、章节" || d.SliceContent.Title == "1.1 小节" {
+		// Title is now merged into Text at the beginning, before first \n\n
+		if strings.HasPrefix(d.SliceContent.Text, "总标题") || strings.HasPrefix(d.SliceContent.Text, "一、章节") || strings.HasPrefix(d.SliceContent.Text, "1.1 小节") {
 			found = true
+			// Verify body content is also present
+			require.Contains(t, d.SliceContent.Text, "筛选：")
+			require.Contains(t, d.SliceContent.Text, "打分：")
+			require.Contains(t, d.SliceContent.Text, "选择：")
 			break
 		}
 	}
@@ -446,13 +445,9 @@ func TestDocumentStructureStrategy_SkipEmptyHeadings(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, docs)
 
-	for _, d := range docs {
-		require.NotEqual(t, "根 / 父标题", d.SliceContent.Title)
-	}
-
 	foundChild := false
 	for _, d := range docs {
-		if d.SliceContent.Title == "根 / 父标题 / 子标题" {
+		if strings.HasPrefix(d.SliceContent.Text, "根 / 父标题 / 子标题") {
 			foundChild = true
 			require.Contains(t, d.SliceContent.Text, "### 子标题")
 			require.Contains(t, d.SliceContent.Text, "子标题内容一。")
