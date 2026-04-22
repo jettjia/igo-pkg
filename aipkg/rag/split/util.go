@@ -25,8 +25,9 @@ var (
 	// 用于识别预处理阶段生成的简短占位符
 	tablePlaceholderRegex = regexp.MustCompile(`HTML_TABLE_PLACEHOLDER_(\d+)`)
 
-	spaceOnlyRegex = regexp.MustCompile(` {2,}`)
-	newline3Regex  = regexp.MustCompile(`\n{3,}`)
+	spaceOnlyRegex    = regexp.MustCompile(` {2,}`)
+	multiNewlineRegex = regexp.MustCompile(`\n{2,}`)
+	pageMarkerRegex  = regexp.MustCompile(`(?i)\n?\s*<!--\s*Page:\s*\d+\s*-->\s*\n?`)
 )
 
 func runeLen(s string) int {
@@ -65,10 +66,15 @@ func preProcessText(text string, base *StrategyBase) string {
 
 	processed = strings.ReplaceAll(processed, "\r\n", "\n")
 
+	// 移除页码标记及其周围的空行
+	processed = pageMarkerRegex.ReplaceAllString(processed, "\n")
+	// 统一将多个连续换行符替换为单个
+	processed = multiNewlineRegex.ReplaceAllString(processed, "\n")
+
 	if base.NormalizeWhitespace {
 		processed = strings.ReplaceAll(processed, "\t", " ")
 		processed = spaceOnlyRegex.ReplaceAllString(processed, " ")
-		processed = newline3Regex.ReplaceAllString(processed, "\n\n")
+		// 注意：不再用 newline3Regex 改写换行数，因为 multiNewlineRegex 已统一处理
 	}
 
 	return processed
@@ -463,6 +469,7 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 
 		// 移除内容中的页码标识
 		content = pageRegex.ReplaceAllString(content, "")
+		content = multiNewlineRegex.ReplaceAllString(content, "\n")
 		content = applyTrimSpaceIfNeeded(content, &StrategyBase{TrimSpace: true})
 
 		// 合并 title + text + table 到 text 字段
@@ -473,6 +480,8 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 		if tableMD != "" {
 			combinedText = combinedText + "\n\n" + tableMD
 		}
+		// 合并后再次清理多余的换行符
+		combinedText = multiNewlineRegex.ReplaceAllString(combinedText, "\n")
 
 		chunk := &Chunk{
 			DocName:    fileName,
