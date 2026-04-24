@@ -96,5 +96,5 @@ func (s *FixedSizeStrategy) Split(ctx context.Context, text string, fileName str
 			break
 		}
 	}
-	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
 }

@@ -89,7 +89,7 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, file
 		}
 		docs = append(docs, s.splitSection(ctx, top, nil)...)
 	}
-	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
 }
 
 type sectionNode struct {

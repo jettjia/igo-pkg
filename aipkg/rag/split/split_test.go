@@ -1371,16 +1371,22 @@ func TestUtil_PreProcessTextMore(t *testing.T) {
 		TrimSpace:           true,
 	}
 
-	// Test with page markers
+	// Test with page markers - now preserved in text for later extraction
 	text := "文本\n<!-- Page: 1 -->\n\n更多文本"
 	processed := preProcessText(text, base)
-	require.NotContains(t, processed, "Page:")
+	// Page markers are now preserved (will be removed in convertToChunks)
+	require.Contains(t, processed, "Page:")
+	// Multiple newlines are collapsed
 	require.NotContains(t, processed, "\n\n\n")
 
-	// Test with table
-	tableText := "之前<table><tr><td>单元格</td></tr></table>之后"
+	// Test with table - now converted to JSON Lines format
+	tableText := "之前<table><tr><th>Header</th></tr><tr><td>Data</td></tr></table>之后"
 	processed2 := preProcessText(tableText, base)
-	require.Contains(t, processed2, "HTML_TABLE_PLACEHOLDER")
+	// Table is converted to JSON Lines (one JSON object per row)
+	require.Contains(t, processed2, "Header")
+	require.Contains(t, processed2, "Data")
+	require.Contains(t, processed2, "{")    // JSON object
+	require.NotContains(t, processed2, "HTML_TABLE_PLACEHOLDER")
 }
 
 func TestUtil_ConvertToChunksWithTables(t *testing.T) {
@@ -1388,16 +1394,16 @@ func TestUtil_ConvertToChunksWithTables(t *testing.T) {
 		ChunkSize:    500,
 		OverlapRatio: 0.1,
 		TrimSpace:    true,
-		tableCache:   []string{},
 	}
 
 	docs := []*schema.Document{
-		{Content: "文本内容"},
+		{Content: "文本内容\n|Header|\n|---\n|Data|\n"},
 	}
 	originalText := "文本内容"
 
 	chunks := convertToChunks(docs, "test.txt", originalText, base)
 	require.Len(t, chunks, 1)
+	require.Contains(t, chunks[0].SliceContent.Text, "|Header|")
 	require.NotEmpty(t, chunks[0].ID)
 	require.NotEmpty(t, chunks[0].DocMD5)
 	require.NotEmpty(t, chunks[0].SliceMD5)
@@ -2018,17 +2024,15 @@ func TestConvertToChunks_WithTitle(t *testing.T) {
 
 func TestConvertToChunks_WithTable(t *testing.T) {
 	base := &StrategyBase{}
-	// Simulate table placeholder
+	// Content already contains markdown table (converted in preProcessText)
 	docs := []*schema.Document{
-		{Content: "HTML_TABLE_PLACEHOLDER_0"},
+		{Content: "文本\n|Header|\n|---\n|Data|\n"},
 	}
-	// Add table to cache - use a proper HTML table
-	base.tableCache = []string{"<table><tr><th>Header</th></tr><tr><td>Data</td></tr></table>"}
-	chunks := convertToChunks(docs, "test.txt", "HTML_TABLE_PLACEHOLDER_0", base)
+	chunks := convertToChunks(docs, "test.txt", "文本", base)
 	require.Len(t, chunks, 1)
-	// Table should be converted to markdown - check for table structure (header row)
-	require.Contains(t, chunks[0].SliceContent.Text, "Header")
-	require.Contains(t, chunks[0].SliceContent.Text, "Data")
+	// Table should be in the output
+	require.Contains(t, chunks[0].SliceContent.Text, "|Header|")
+	require.Contains(t, chunks[0].SliceContent.Text, "|Data|")
 }
 
 func TestConvertToChunks_MultiPageInContent(t *testing.T) {

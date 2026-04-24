@@ -3,6 +3,7 @@ package split
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math"
 	"regexp"
@@ -16,19 +17,23 @@ import (
 )
 
 var (
-	urlRegex      = regexp.MustCompile(`https?://[^\s]+`)
-	emailRegex    = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
-	imageURLRegex = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
-	tableRegex    = regexp.MustCompile(`(?s)<table>.*?</table>`)
-	pageRegex     = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
-
-	// 用于识别预处理阶段生成的简短占位符
+	urlRegex             = regexp.MustCompile(`https?://[^\s]+`)
+	emailRegex           = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+	imageURLRegex        = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
+	tableRegex           = regexp.MustCompile(`(?s)<table>.*?</table>`)
+	pageRegex            = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
 	tablePlaceholderRegex = regexp.MustCompile(`HTML_TABLE_PLACEHOLDER_(\d+)`)
-
-	spaceOnlyRegex    = regexp.MustCompile(` {2,}`)
-	multiNewlineRegex = regexp.MustCompile(`\n{2,}`)
-	pageMarkerRegex  = regexp.MustCompile(`(?i)\n?\s*<!--\s*Page:\s*\d+\s*-->\s*\n?`)
+	spaceOnlyRegex       = regexp.MustCompile(` {2,}`)
+	multiNewlineRegex    = regexp.MustCompile(`\n{2,}`)
+	pageMarkerRegex      = regexp.MustCompile(`(?i)\n?\s*<!--\s*Page:\s*\d+\s*-->\s*\n?`)
 )
+
+// cellInfo holds HTML table cell data including colspan/rowspan
+type cellInfo struct {
+	text    string
+	rowspan int
+	colspan int
+}
 
 func runeLen(s string) int {
 	return len([]rune(s))
@@ -47,34 +52,40 @@ func overlapTokens(chunkSize int, overlapRatio float64) int {
 func preProcessText(text string, base *StrategyBase) string {
 	processed := text
 
-	// 提前将表格内容替换为简短占位符，防止在 Split 过程中被切断
-	base.tableCache = nil
+	// Step 1: 将HTML表格直接转换为JSON行格式（每行一个JSON对象）
+	// 这样每行都是独立的 chunk，自然避免超长问题
 	processed = tableRegex.ReplaceAllStringFunc(processed, func(tableHTML string) string {
-		placeholder := fmt.Sprintf("HTML_TABLE_PLACEHOLDER_%d", len(base.tableCache))
-		base.tableCache = append(base.tableCache, tableHTML)
-		return "\n\n" + placeholder + "\n\n"
+		jsonLines := tableToJSONLines(tableHTML)
+		if jsonLines == "" {
+			return ""
+		}
+		return "\n\n" + jsonLines + "\n\n"
 	})
 
+	// Step 2: 移除URL和邮箱
 	if base.RemoveURLAndEmail {
 		processed = urlRegex.ReplaceAllString(processed, "")
 		processed = emailRegex.ReplaceAllString(processed, "")
 	}
 
+	// Step 3: 移除图片URL
 	if base.RemoveImageURL {
 		processed = imageURLRegex.ReplaceAllString(processed, "")
 	}
 
+	// Step 4: 统一换行符
 	processed = strings.ReplaceAll(processed, "\r\n", "\n")
 
-	// 移除页码标记及其周围的空行
-	processed = pageMarkerRegex.ReplaceAllString(processed, "\n")
-	// 统一将多个连续换行符替换为单个
-	processed = multiNewlineRegex.ReplaceAllString(processed, "\n")
-
+	// Step 5: 规范化空白符（可选）
 	if base.NormalizeWhitespace {
 		processed = strings.ReplaceAll(processed, "\t", " ")
 		processed = spaceOnlyRegex.ReplaceAllString(processed, " ")
-		// 注意：不再用 newline3Regex 改写换行数，因为 multiNewlineRegex 已统一处理
+		processed = multiNewlineRegex.ReplaceAllString(processed, "\n")
+	}
+
+	// Step 6: TrimSpace（可选）
+	if base.TrimSpace {
+		processed = strings.TrimSpace(processed)
 	}
 
 	return processed
@@ -121,11 +132,6 @@ func tableToMarkdown(tableHTML string) string {
 	}
 
 	// Collect all rows with their cell info (including rowspan/colspan)
-	type cellInfo struct {
-		text    string
-		rowspan int
-		colspan int
-	}
 	var allRows [][]cellInfo
 
 	var processRow func(*html.Node)
@@ -280,6 +286,165 @@ func tableToMarkdown(tableHTML string) string {
 	return b.String()
 }
 
+// tableToJSONLines converts an HTML table to JSON Lines format (one JSON object per row)
+// Each row becomes a JSON object with header names as keys
+// This solves the problem of long markdown table cells that exceed chunkSize
+func tableToJSONLines(tableHTML string) string {
+	doc, err := html.Parse(strings.NewReader(tableHTML))
+	if err != nil {
+		return ""
+	}
+
+	// Collect all rows with their cell info
+	var allRows [][]cellInfo
+
+	var processRow func(*html.Node)
+	processRow = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "tr" {
+			var cells []cellInfo
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.ElementNode && (c.Data == "th" || c.Data == "td") {
+					rowspan := 1
+					colspan := 1
+					for _, attr := range c.Attr {
+						if attr.Key == "rowspan" {
+							if v, err := strconv.Atoi(attr.Val); err == nil {
+								rowspan = v
+							}
+						}
+						if attr.Key == "colspan" {
+							if v, err := strconv.Atoi(attr.Val); err == nil {
+								colspan = v
+							}
+						}
+					}
+					cells = append(cells, cellInfo{
+						text:    strings.TrimSpace(getNodeText(c)),
+						rowspan: rowspan,
+						colspan: colspan,
+					})
+				}
+			}
+			if len(cells) > 0 {
+				allRows = append(allRows, cells)
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			processRow(c)
+		}
+	}
+	processRow(doc)
+
+	if len(allRows) < 2 {
+		return ""
+	}
+
+	// First row is header, rest are data rows
+	headers := extractCellTexts(allRows[0])
+	dataRows := allRows[1:]
+
+	// Build 2D grid with colspan/rowspan handling
+	maxCols := len(headers)
+	grid := make([][]string, len(dataRows))
+	for i := range grid {
+		grid[i] = make([]string, maxCols)
+	}
+
+	rowspanGrid := make([][]int, len(dataRows))
+	for i := range rowspanGrid {
+		rowspanGrid[i] = make([]int, maxCols)
+	}
+
+	// Fill grid for data rows
+	for rowIdx, row := range dataRows {
+		colIdx := 0
+		for _, cell := range row {
+			for colIdx < maxCols && rowspanGrid[rowIdx][colIdx] > 0 {
+				colIdx++
+			}
+			if colIdx >= maxCols {
+				break
+			}
+			for c := 0; c < cell.colspan && colIdx+c < maxCols; c++ {
+				if c == 0 {
+					grid[rowIdx][colIdx+c] = cell.text
+				}
+			}
+			for r := 1; r < cell.rowspan && rowIdx+r < len(dataRows); r++ {
+				for c := 0; c < cell.colspan && colIdx+c < maxCols; c++ {
+					rowspanGrid[rowIdx+r][colIdx+c]++
+				}
+			}
+			colIdx += cell.colspan
+		}
+	}
+
+	// Build JSON Lines output
+	var result strings.Builder
+	for _, row := range grid {
+		// Skip rows that are completely empty
+		allEmpty := true
+		for _, cell := range row {
+			if cell != "" {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			continue
+		}
+
+		// Build JSON object with header names as keys
+		obj := make(map[string]string)
+		for colIdx, header := range headers {
+			header = decodeHexEscapes(header)
+			cell := decodeHexEscapes(row[colIdx])
+			// Clean cell content: remove newlines, excessive spaces
+			cell = strings.ReplaceAll(cell, "\n", " ")
+			cell = strings.ReplaceAll(cell, "\r", " ")
+			cell = collapseSpaces(cell)
+			obj[header] = cell
+		}
+
+		jsonBytes, err := json.Marshal(obj)
+		if err != nil {
+			continue
+		}
+		result.WriteString(string(jsonBytes))
+		result.WriteString("\n")
+	}
+
+	return strings.TrimSuffix(result.String(), "\n")
+}
+
+// extractCellTexts extracts just the text from cells without colspan/rowspan handling
+func extractCellTexts(row []cellInfo) []string {
+	result := make([]string, 0, len(row))
+	for _, cell := range row {
+		result = append(result, cell.text)
+	}
+	return result
+}
+
+// collapseSpaces replaces multiple spaces with single space
+func collapseSpaces(s string) string {
+	s = strings.TrimSpace(s)
+	var b strings.Builder
+	prevSpace := false
+	for _, r := range s {
+		if r == ' ' {
+			if !prevSpace {
+				b.WriteRune(r)
+				prevSpace = true
+			}
+		} else {
+			b.WriteRune(r)
+			prevSpace = false
+		}
+	}
+	return b.String()
+}
+
 func applyTrimSpaceIfNeeded(text string, base *StrategyBase) string {
 	if base.TrimSpace {
 		return strings.TrimSpace(text)
@@ -361,30 +526,19 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 	docMD5 := calculateMD5(originalText)
 	chunks := make([]*Chunk, 0, len(docs))
 
-	// 先获取全文的所有页码位置，以便后续判断每个切片所属页码
-	type pageInfo struct {
-		pageNo int
-		pos    int
-	}
-	var pages []pageInfo
-	matches := pageRegex.FindAllStringSubmatchIndex(originalText, -1)
-	for _, m := range matches {
-		pNo, _ := strconv.Atoi(originalText[m[2]:m[3]])
-		pages = append(pages, pageInfo{pageNo: pNo, pos: m[0]})
-	}
-
 	for i, doc := range docs {
 		sliceMD5 := calculateMD5(doc.Content)
 		id := fmt.Sprintf("%s-%d", sliceMD5[:8], i)
 
 		// 提取当前切片内容中的页码标识
 		pageMap := make(map[int]bool)
-		// 1. 检查文档自带的 Page (如果已由其他逻辑设置)
+
+		// 1. 检查文档自带的 Page
 		if doc.Page > 0 {
 			pageMap[doc.Page] = true
 		}
 
-		// 2. 扫描内容中的页码标识
+		// 2. 扫描内容中的页码标识（页码标记保留在文本中）
 		contentMatches := pageRegex.FindAllStringSubmatch(doc.Content, -1)
 		for _, cm := range contentMatches {
 			if p, err := strconv.Atoi(cm[1]); err == nil {
@@ -392,93 +546,26 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 			}
 		}
 
-		// 3. 如果内容中没有页码标识，尝试根据它在原图中的大致位置推断页码
-		if len(pageMap) == 0 && len(pages) > 0 {
-			// 找到切片内容在原图中的起始位置
-			// 为了提高匹配准确度，取切片的前 100 个字符进行搜索（避开 overlap 带来的重复匹配）
-			searchText := doc.Content
-			if runeLen(searchText) > 100 {
-				searchText = string([]rune(searchText)[:100])
-			}
-			// 在 originalText 中从上一个 chunk 结束的位置开始搜索，或者全局搜索
-			startIdx := strings.Index(originalText, searchText)
-			if startIdx != -1 {
-				currentPage := 1 // 默认第一页
-				for _, p := range pages {
-					if startIdx >= p.pos {
-						currentPage = p.pageNo
-					} else {
-						break
-					}
-				}
-				pageMap[currentPage] = true
-			} else {
-				// 如果 Index 没找到，可能是因为 preprocess 处理了文本。
-				// 暂时简单处理：沿用上一个 chunk 的页码
-				if i > 0 && len(chunks) > 0 {
-					for _, p := range chunks[i-1].Pages {
-						pageMap[p] = true
-					}
-				} else {
-					pageMap[1] = true
-				}
-			}
-		}
-
-		// 4. 补充逻辑：如果是因为 overlap 导致的切片包含了下一页的开始，也记录下来
-		if len(pages) > 0 {
-			startIdx := strings.Index(originalText, doc.Content)
-			if startIdx != -1 {
-				endIdx := startIdx + len(doc.Content)
-				for _, p := range pages {
-					if p.pos > startIdx && p.pos < endIdx {
-						pageMap[p.pageNo] = true
-					}
-				}
-			}
+		// 3. 如果仍没有页码信息，默认第1页
+		if len(pageMap) == 0 {
+			pageMap[1] = true
 		}
 
 		finalPages := make([]int, 0, len(pageMap))
 		for p := range pageMap {
 			finalPages = append(finalPages, p)
 		}
-		// 排序页码
 		sort.Ints(finalPages)
 
-		// 解析表格占位符（可能包含多个表格）
-		var tableMD string
-		content := doc.Content
-		if tablePlaceholderRegex.MatchString(content) {
-			// 找到所有占位符的索引
-			matches := tablePlaceholderRegex.FindAllStringSubmatch(content, -1)
-			var tables []string
-			for _, match := range matches {
-				if len(match) > 1 {
-					idx, _ := strconv.Atoi(match[1])
-					if idx >= 0 && idx < len(base.tableCache) {
-						tableHTML := base.tableCache[idx]
-						tables = append(tables, tableToMarkdown(tableHTML))
-					}
-				}
-			}
-			// 用换行分隔多个表格
-			tableMD = strings.Join(tables, "\n\n")
-			// 移除所有占位符，保留剩下的文本
-			content = tablePlaceholderRegex.ReplaceAllString(content, "")
-		}
-
-		// 移除内容中的页码标识
-		content = pageRegex.ReplaceAllString(content, "")
+		// 内容已经是处理好的文本（包含markdown表格），只需清理页码标记
+		content := pageRegex.ReplaceAllString(doc.Content, "")
 		content = multiNewlineRegex.ReplaceAllString(content, "\n")
 		content = applyTrimSpaceIfNeeded(content, &StrategyBase{TrimSpace: true})
 
-		// 合并 title + text + table 到 text 字段
+		// 合并 title + text 到 text 字段（表格已在 preProcessText 中直接转为markdown）
 		combinedText := content
 		if doc.Title != "" {
 			combinedText = doc.Title + "\n\n" + combinedText
-		}
-		if tableMD != "" {
-			combinedText = combinedText + "\n\n" + tableMD
 		}
 		// 合并后再次清理多余的换行符
 		combinedText = multiNewlineRegex.ReplaceAllString(combinedText, "\n")

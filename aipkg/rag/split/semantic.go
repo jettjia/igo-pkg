@@ -188,7 +188,7 @@ func (s *SemanticStrategy) Split(ctx context.Context, text string, fileName stri
 		}
 		docs = append(docs, newDocument(c, "", 0))
 	}
-	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
 }
 
 func semanticSplitDoubleMerging(

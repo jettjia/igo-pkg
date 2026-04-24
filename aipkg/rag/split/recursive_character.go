@@ -26,7 +26,7 @@ func NewRecursiveCharacterStrategy() *RecursiveCharacterStrategy {
 			NormalizeWhitespace: false,
 			TrimSpace:           false,
 		},
-		Separators: []string{"\n\n", "\n", "。", "！", "!", "？", "?", "；", ";", "，", ",", " "},
+		Separators: []string{"\n\n", "\n", "。", "！", "!", "？", "?", "；", ";", "，", ",", " ", "|"},
 	}
 }
 
@@ -69,7 +69,8 @@ func (s *RecursiveCharacterStrategy) Split(ctx context.Context, text string, fil
 		}
 		docs = append(docs, newDocument(c, "", 0))
 	}
-	return convertToChunks(docs, fileName, text, &s.StrategyBase), nil
+	// 传入 processed 而不是原始 text，这样 convertToChunks 可以正确提取页码等信息
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
 }
 
 func recursiveSplit(text string, separators []string, chunkSize int) []string {
