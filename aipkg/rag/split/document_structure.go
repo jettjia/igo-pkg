@@ -251,7 +251,7 @@ func (s *DocumentStructureStrategy) splitSection(ctx context.Context, sec *secti
 				truncated = string(r[:s.ChunkSize])
 			}
 		}
-		return []*schema.Document{newDocument(applyTrimSpaceIfNeeded(truncated, &s.StrategyBase), docTitle, sec.depth)}
+		return []*schema.Document{newDocumentWithHeading(applyTrimSpaceIfNeeded(truncated, &s.StrategyBase), docTitle, sec.depth, nextPath)}
 	}
 
 	available := s.ChunkSize - prefixLen
@@ -286,7 +286,7 @@ func (s *DocumentStructureStrategy) splitSection(ctx context.Context, sec *secti
 			runes := []rune(chunkText)
 			chunkText = string(runes[:s.ChunkSize])
 		}
-		docs = append(docs, newDocument(chunkText, docTitle, sec.depth))
+		docs = append(docs, newDocumentWithHeading(chunkText, docTitle, sec.depth, nextPath))
 	}
 
 	var curUnits []string
@@ -399,8 +399,8 @@ func splitTextForStructure(text string, chunkSize int) []string {
 // splitBySentences 按句子边界切分，保持语义完整性
 // 分隔符优先级：空行 > 句号 > 感叹号 > 问号 > 换行
 func splitBySentences(text string, chunkSize int) []string {
-	// 按句子分隔符切分
-	separators := []string{"\n\n", "。", "！", "！", "？", "？", "\n", "；", ";", "，", ","}
+	// 按句子分隔符切分，优先空行和完整句子
+	separators := []string{"\n\n", "。", "！", "？", "\n", "；", ";", "，", ","}
 	return recursiveSplit(text, separators, chunkSize)
 }
 

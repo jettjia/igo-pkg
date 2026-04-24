@@ -497,6 +497,8 @@ func runDocumentStructure(ctx context.Context, input string, fileName string) {
 	s.SkipEmptyHeadings = true
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
+	s.RemoveURLAndEmail = true
+	s.RemoveImageURL = true
 
 	docs, err := s.Split(ctx, input, fileName)
 	if err != nil {

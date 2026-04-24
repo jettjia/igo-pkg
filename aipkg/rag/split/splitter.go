@@ -42,11 +42,12 @@ type SliceContent struct {
 type Chunk struct {
 	DocName      string       `json:"doc_name"`    // 传入的文件名称
 	DocMD5       string       `json:"doc_md5"`     // 文本的md5值
-	SliceMD5     string       `json:"slice_md5"`   // slice的md5值
-	ID           string       `json:"id"`          // 切片的id值
-	Pages        []int        `json:"pages"`       // 当前slice所在页码
-	SegmentID    int          `json:"segment_id"`  // 当前切片的序号,按照人的阅读顺序它是第几个block
-	SuperiorID   string       `json:"superior_id"` // 父亲slice的id值
+	SliceMD5     string       `json:"slice_md5"`    // slice的md5值
+	ID           string       `json:"id"`           // 切片的id值
+	Pages        []int       `json:"pages"`        // 当前slice所在页码
+	SegmentID    int         `json:"segment_id"`   // 当前切片的序号,按照人的阅读顺序它是第几个block
+	SuperiorID    string      `json:"superior_id"`  // 父亲slice的id值
+	HeadingPath  []string     `json:"heading_path"` // 标题层级路径，如 ["第一章", "1.1节"]
 	SliceContent SliceContent `json:"slice_content"`
 }
 

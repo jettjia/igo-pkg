@@ -17,15 +17,15 @@ import (
 )
 
 var (
-	urlRegex             = regexp.MustCompile(`https?://[^\s]+`)
-	emailRegex           = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
-	imageURLRegex        = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
-	tableRegex           = regexp.MustCompile(`(?s)<table>.*?</table>`)
-	pageRegex            = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
+	urlRegex              = regexp.MustCompile(`https?://[^\s]+`)
+	emailRegex            = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+	imageURLRegex         = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
+	tableRegex            = regexp.MustCompile(`(?s)<table>.*?</table>`)
+	pageRegex             = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
 	tablePlaceholderRegex = regexp.MustCompile(`HTML_TABLE_PLACEHOLDER_(\d+)`)
-	spaceOnlyRegex       = regexp.MustCompile(` {2,}`)
-	multiNewlineRegex    = regexp.MustCompile(`\n{2,}`)
-	pageMarkerRegex      = regexp.MustCompile(`(?i)\n?\s*<!--\s*Page:\s*\d+\s*-->\s*\n?`)
+	spaceOnlyRegex        = regexp.MustCompile(` {2,}`)
+	multiNewlineRegex     = regexp.MustCompile(`\n{2,}`)
+	pageMarkerRegex       = regexp.MustCompile(`(?i)\n?\s*<!--\s*Page:\s*\d+\s*-->\s*\n?`)
 )
 
 // cellInfo holds HTML table cell data including colspan/rowspan
@@ -482,6 +482,12 @@ func newDocument(content string, title string, depth int) *schema.Document {
 	return doc
 }
 
+func newDocumentWithHeading(content string, title string, depth int, headingPath []string) *schema.Document {
+	doc := newDocument(content, title, depth)
+	doc.HeadingPath = headingPath
+	return doc
+}
+
 func applyOverlapToStrings(chunks []string, chunkSize int, overlapRatio float64) []string {
 	if len(chunks) <= 1 {
 		return chunks
@@ -576,13 +582,14 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 		}
 
 		chunk := &Chunk{
-			DocName:    fileName,
-			DocMD5:     docMD5,
-			SliceMD5:   sliceMD5,
-			ID:         id,
-			Pages:      finalPages,
-			SegmentID:  i + 1,
-			SuperiorID: doc.DocID,
+			DocName:     fileName,
+			DocMD5:      docMD5,
+			SliceMD5:    sliceMD5,
+			ID:          id,
+			Pages:       finalPages,
+			SegmentID:   i + 1,
+			SuperiorID:  doc.DocID,
+			HeadingPath:  doc.HeadingPath,
 			SliceContent: SliceContent{
 				Title:   "", // 内容已合并到 Text
 				Text:    combinedText,
