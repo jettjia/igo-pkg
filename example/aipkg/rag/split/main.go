@@ -285,6 +285,8 @@ func newDocumentStructurePerfStrategy() perfStrategy {
 	s.SkipEmptyHeadings = true
 	s.NormalizeWhitespace = true
 	s.TrimSpace = true
+	s.RemoveURLAndEmail = true
+	s.RemoveImageURL = true
 	return perfStrategy{
 		Splitter: s,
 		Config: map[string]any{

@@ -26,7 +26,7 @@ func NewRecursiveCharacterStrategy() *RecursiveCharacterStrategy {
 			NormalizeWhitespace: false,
 			TrimSpace:           false,
 		},
-		Separators: []string{"\n\n", "\n", "。", "！", "!", "？", "?", "；", ";", "，", ",", " ", "|"},
+		Separators: []string{"\n\n", "\n", "。", "！", "!", "？", "?", "；", ";", "，", ",", " "},
 	}
 }
 

@@ -5,14 +5,12 @@ go 1.25.0
 toolchain go1.25.3
 
 require (
-	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.0
 	github.com/cloudwego/eino v0.8.8
 	github.com/jettjia/igo-pkg/aipkg v0.0.0
 	github.com/panjf2000/ants/v2 v2.12.0
 )
 
 require (
-	github.com/JohannesKaufmann/dom v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
