@@ -281,6 +281,11 @@ func (s *DocumentStructureStrategy) splitSection(ctx context.Context, sec *secti
 		}
 		chunkText := prefixText + body
 		chunkText = applyTrimSpaceIfNeeded(chunkText, &s.StrategyBase)
+		// 确保最终 chunk 不超过 ChunkSize
+		if s.ChunkSize > 0 && runeLen(chunkText) > s.ChunkSize {
+			runes := []rune(chunkText)
+			chunkText = string(runes[:s.ChunkSize])
+		}
 		docs = append(docs, newDocument(chunkText, docTitle, sec.depth))
 	}
 
@@ -376,7 +381,8 @@ func splitTextForStructure(text string, chunkSize int) []string {
 	}
 
 	protected, blocks := protectCodeBlocks(trimmed)
-	parts := recursiveSplit(protected, []string{"\n\n", "\n", "。", "！", "!", "？", "?", "；", ";", "，", ",", " "}, chunkSize)
+	// 使用句子边界切分，保持语义完整
+	parts := splitBySentences(protected, chunkSize)
 
 	out := make([]string, 0, len(parts))
 	for _, p := range parts {
@@ -388,6 +394,14 @@ func splitTextForStructure(text string, chunkSize int) []string {
 		out = append(out, p)
 	}
 	return out
+}
+
+// splitBySentences 按句子边界切分，保持语义完整性
+// 分隔符优先级：空行 > 句号 > 感叹号 > 问号 > 换行
+func splitBySentences(text string, chunkSize int) []string {
+	// 按句子分隔符切分
+	separators := []string{"\n\n", "。", "！", "！", "？", "？", "\n", "；", ";", "，", ","}
+	return recursiveSplit(text, separators, chunkSize)
 }
 
 func protectCodeBlocks(text string) (string, []string) {

@@ -298,6 +298,7 @@ func newDocumentStructurePerfStrategy() perfStrategy {
 			"semantic_threshold":   s.SemanticThreshold,
 			"document_max_depth":   s.MaxDepth,
 			"skip_empty_headings":  s.SkipEmptyHeadings,
+			"remove_image_url":     s.RemoveImageURL,
 		},
 	}
 }
