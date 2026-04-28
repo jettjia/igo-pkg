@@ -60,6 +60,9 @@ func (s *FixedSizeStrategy) Split(ctx context.Context, text string, fileName str
 		return nil, nil
 	}
 
+	// 提取页码标记，用于后续页码推断
+	markers := extractPageMarkers(processed)
+
 	chunkSize := s.ChunkSize
 	overlap := s.ChunkOverlap
 	if overlap == 0 {
@@ -96,5 +99,5 @@ func (s *FixedSizeStrategy) Split(ctx context.Context, text string, fileName str
 			break
 		}
 	}
-	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase, markers), nil
 }

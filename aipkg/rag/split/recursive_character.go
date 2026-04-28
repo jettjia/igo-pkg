@@ -58,6 +58,9 @@ func (s *RecursiveCharacterStrategy) Split(ctx context.Context, text string, fil
 		return nil, nil
 	}
 
+	// 提取页码标记，用于后续页码推断
+	markers := extractPageMarkers(processed)
+
 	chunks := recursiveSplit(processed, s.Separators, s.ChunkSize)
 	chunks = applyOverlapToStrings(chunks, s.ChunkSize, s.OverlapRatio)
 
@@ -70,7 +73,7 @@ func (s *RecursiveCharacterStrategy) Split(ctx context.Context, text string, fil
 		docs = append(docs, newDocument(c, "", 0))
 	}
 	// 传入 processed 而不是原始 text，这样 convertToChunks 可以正确提取页码等信息
-	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase, markers), nil
 }
 
 func recursiveSplit(text string, separators []string, chunkSize int) []string {

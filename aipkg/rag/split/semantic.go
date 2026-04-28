@@ -150,6 +150,9 @@ func (s *SemanticStrategy) Split(ctx context.Context, text string, fileName stri
 		return nil, nil
 	}
 
+	// 提取页码标记，用于后续页码推断
+	markers := extractPageMarkers(processed)
+
 	sentences := splitIntoSentencesPreserveNewlinesWithCodeBlocks(processed)
 	if len(sentences) == 0 {
 		return nil, nil
@@ -188,7 +191,7 @@ func (s *SemanticStrategy) Split(ctx context.Context, text string, fileName stri
 		}
 		docs = append(docs, newDocument(c, "", 0))
 	}
-	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase, markers), nil
 }
 
 func semanticSplitDoubleMerging(

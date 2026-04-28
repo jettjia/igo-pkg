@@ -887,7 +887,7 @@ func TestUtil_ConvertToChunks(t *testing.T) {
 		TrimSpace:    true,
 	}
 
-	chunks := convertToChunks(docs, "test.txt", originalText, base)
+	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 2)
 	require.Equal(t, "test.txt", chunks[0].DocName)
 	require.Equal(t, 1, chunks[0].SegmentID)
@@ -1401,7 +1401,7 @@ func TestUtil_ConvertToChunksWithTables(t *testing.T) {
 	}
 	originalText := "文本内容"
 
-	chunks := convertToChunks(docs, "test.txt", originalText, base)
+	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 1)
 	require.Contains(t, chunks[0].SliceContent.Text, "|Header|")
 	require.NotEmpty(t, chunks[0].ID)
@@ -1553,11 +1553,11 @@ func TestUtil_ConvertToChunksMore(t *testing.T) {
 	docs := []*schema.Document{
 		{Content: "文本内容\n<!-- Page: 1 -->\n更多内容"},
 	}
-	chunks := convertToChunks(docs, "test.txt", originalText, base)
+	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 1)
 
 	// Test with empty docs
-	chunks2 := convertToChunks([]*schema.Document{}, "test.txt", "", base)
+	chunks2 := convertToChunks([]*schema.Document{}, "test.txt", "", base, nil)
 	require.Len(t, chunks2, 0)
 }
 
@@ -1747,7 +1747,7 @@ func TestUtil_ConvertToChunksWithMultipleDocs(t *testing.T) {
 	}
 	originalText := "第一个文档内容\n---\n第二个文档内容\n---\n第三个文档内容"
 
-	chunks := convertToChunks(docs, "test.txt", originalText, base)
+	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 3)
 	require.Equal(t, 1, chunks[0].SegmentID)
 	require.Equal(t, 2, chunks[1].SegmentID)
@@ -1766,7 +1766,7 @@ func TestUtil_ConvertToChunksWithTitle(t *testing.T) {
 	}
 	originalText := "文档标题\n\n正文内容"
 
-	chunks := convertToChunks(docs, "test.txt", originalText, base)
+	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 1)
 	// Title should be prepended to text
 	require.Contains(t, chunks[0].SliceContent.Text, "文档标题")
@@ -1785,7 +1785,7 @@ func TestUtil_ConvertToChunksWithPageMarkers(t *testing.T) {
 	}
 	originalText := "第一页内容\n<!-- Page: 1 -->\n第二页内容"
 
-	chunks := convertToChunks(docs, "test.txt", originalText, base)
+	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 1)
 	// Page markers should be removed from content
 	require.NotContains(t, chunks[0].SliceContent.Text, "Page:")
@@ -2005,7 +2005,7 @@ func TestConvertToChunks_WithDocPage(t *testing.T) {
 	docs := []*schema.Document{
 		{Content: "测试内容", Page: 5},
 	}
-	chunks := convertToChunks(docs, "test.txt", "测试内容", base)
+	chunks := convertToChunks(docs, "test.txt", "测试内容", base, extractPageMarkers("测试内容"))
 	require.Len(t, chunks, 1)
 	require.Contains(t, chunks[0].Pages, 5)
 }
@@ -2015,7 +2015,7 @@ func TestConvertToChunks_WithTitle(t *testing.T) {
 	docs := []*schema.Document{
 		{Title: "文档标题", Content: "测试内容"},
 	}
-	chunks := convertToChunks(docs, "test.txt", "文档标题\n\n测试内容", base)
+	chunks := convertToChunks(docs, "test.txt", "文档标题\n\n测试内容", base, extractPageMarkers("文档标题\n\n测试内容"))
 	require.Len(t, chunks, 1)
 	// Title should be prepended to text
 	require.Contains(t, chunks[0].SliceContent.Text, "文档标题")
@@ -2028,7 +2028,7 @@ func TestConvertToChunks_WithTable(t *testing.T) {
 	docs := []*schema.Document{
 		{Content: "文本\n|Header|\n|---\n|Data|\n"},
 	}
-	chunks := convertToChunks(docs, "test.txt", "文本", base)
+	chunks := convertToChunks(docs, "test.txt", "文本", base, extractPageMarkers("文本"))
 	require.Len(t, chunks, 1)
 	// Table should be in the output
 	require.Contains(t, chunks[0].SliceContent.Text, "|Header|")
@@ -2041,7 +2041,7 @@ func TestConvertToChunks_MultiPageInContent(t *testing.T) {
 	docs := []*schema.Document{
 		{Content: "测试内容", Page: 3},
 	}
-	chunks := convertToChunks(docs, "test.txt", "测试内容", base)
+	chunks := convertToChunks(docs, "test.txt", "测试内容", base, extractPageMarkers("测试内容"))
 	require.Len(t, chunks, 1)
 	// Should have page 3 from doc.Page
 	require.Contains(t, chunks[0].Pages, 3)
@@ -2367,7 +2367,7 @@ func TestConvertToChunks_WithOverlap(t *testing.T) {
 		{Content: "第二段内容"},
 		{Content: "第三段内容"},
 	}
-	chunks := convertToChunks(docs, "test.txt", "第一段内容第二段内容第三段内容", base)
+	chunks := convertToChunks(docs, "test.txt", "第一段内容第二段内容第三段内容", base, extractPageMarkers("第一段内容第二段内容第三段内容"))
 	require.NotNil(t, chunks)
 }
 
@@ -2437,7 +2437,7 @@ func TestConvertToChunks_PageSearchFallback(t *testing.T) {
 		{Content: "some content here that is unique"},
 	}
 	// Use originalText that doesn't contain the doc.Content exactly
-	chunks := convertToChunks(docs, "test.txt", "different original text some content here that is unique more text", base)
+	chunks := convertToChunks(docs, "test.txt", "different original text some content here that is unique more text", base, extractPageMarkers("different original text some content here that is unique more text"))
 	require.Len(t, chunks, 1)
 	// Should fall back to using previous chunk's page or default page 1
 }
@@ -2633,7 +2633,7 @@ func TestConvertToChunks_PageSearchEdge(t *testing.T) {
 	}
 	// Original text has the content in a specific position relative to pages
 	originalText := "<!-- Page: 1 -->重复内容<!-- Page: 2 -->其他内容重复内容<!-- Page: 3 -->"
-	chunks := convertToChunks(docs, "test.txt", originalText, base)
+	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 1)
 	// Should find correct page based on position
 }

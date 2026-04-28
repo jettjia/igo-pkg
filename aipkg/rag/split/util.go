@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -34,6 +35,70 @@ type cellInfo struct {
 	text    string
 	rowspan int
 	colspan int
+}
+
+// pageMarkerInfo 存储页码标记的位置信息
+type pageMarkerInfo struct {
+	Page    int // 页码
+	RunePos int // 在文本中的 rune 位置
+	BytePos int // 在文本中的 byte 位置
+}
+
+// extractPageMarkers 提取文本中所有页码标记及其位置
+func extractPageMarkers(text string) []pageMarkerInfo {
+	// DEBUG
+	fmt.Fprintf(os.Stderr, "DEBUG extractPageMarkers CALLED, text_len=%d\n", len(text))
+	matches := pageRegex.FindAllStringSubmatchIndex(text, -1)
+	markers := make([]pageMarkerInfo, 0, len(matches))
+
+	for _, match := range matches {
+		if len(match) >= 4 {
+			pageStr := text[match[2]:match[3]]
+			page, err := strconv.Atoi(pageStr)
+			if err != nil {
+				continue
+			}
+			// 计算该匹配在原文中的 byte 位置
+			bytePos := match[0]
+			// 计算 rune 位置（用于后续比较）
+			runePos := len([]rune(text[:bytePos]))
+			markers = append(markers, pageMarkerInfo{
+				Page:    page,
+				RunePos: runePos,
+				BytePos: bytePos,
+			})
+		}
+	}
+
+	return markers
+}
+
+// findPagesForContent 根据内容在原文中的位置，返回该内容对应的页码
+// 找到最后一个（最大的）RunePos <= contentRunePos 的页码，即内容起始位置所在的页码
+func findPagesForContent(content string, originalText string, markers []pageMarkerInfo) []int {
+	if len(markers) == 0 {
+		return []int{1}
+	}
+
+	pos := strings.Index(originalText, content)
+	if pos < 0 {
+		return []int{markers[0].Page}
+	}
+
+	contentRunePos := len([]rune(originalText[:pos]))
+
+	// 找到最后一个（最大的）RunePos <= contentRunePos 的页码
+	var lastPage int
+	for _, m := range markers {
+		if m.RunePos <= contentRunePos {
+			lastPage = m.Page
+		}
+	}
+
+	if lastPage == 0 {
+		return []int{1}
+	}
+	return []int{lastPage}
 }
 
 func runeLen(s string) int {
@@ -578,7 +643,9 @@ func isMeaninglessChunk(text string) bool {
 	return false
 }
 
-func convertToChunks(docs []*schema.Document, fileName string, originalText string, base *StrategyBase) []*Chunk {
+func convertToChunks(docs []*schema.Document, fileName string, originalText string, base *StrategyBase, markers []pageMarkerInfo) []*Chunk {
+	// DEBUG
+	fmt.Fprintf(os.Stderr, "DEBUG convertToChunks: markers count=%d, docs count=%d\n", len(markers), len(docs))
 	docMD5 := calculateMD5(originalText)
 	chunks := make([]*Chunk, 0, len(docs))
 
@@ -586,32 +653,59 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 		sliceMD5 := calculateMD5(doc.Content)
 		id := fmt.Sprintf("%s-%d", sliceMD5[:8], i)
 
-		// 提取当前切片内容中的页码标识
-		pageMap := make(map[int]bool)
+		// 使用位置信息推断页码
+		var finalPages []int
 
-		// 1. 检查文档自带的 Page
+		// 优先级：1. doc.Page > 0 直接使用  2. 位置推断  3. 内容搜索  4. 默认第1页
 		if doc.Page > 0 {
-			pageMap[doc.Page] = true
-		}
+			// 1. 文档自带的 Page 优先级最高
+			finalPages = []int{doc.Page}
+		} else {
+			// 2. 尝试在 originalText 中找到 chunk 内容的位置，使用位置推断
+			pos := strings.Index(originalText, doc.Content)
+			if pos >= 0 {
+				finalPages = findPagesForContent(doc.Content, originalText, markers)
+			} else {
+				// 3. 找不到（内容被截断），回退到在内容中搜索页码标记
+				pageMap := make(map[int]bool)
 
-		// 2. 扫描内容中的页码标识（页码标记保留在文本中）
-		contentMatches := pageRegex.FindAllStringSubmatch(doc.Content, -1)
-		for _, cm := range contentMatches {
-			if p, err := strconv.Atoi(cm[1]); err == nil {
-				pageMap[p] = true
+				// 扫描内容中的页码标识（页码标记保留在文本中）
+				contentMatches := pageRegex.FindAllStringSubmatch(doc.Content, -1)
+				for _, cm := range contentMatches {
+					if p, err := strconv.Atoi(cm[1]); err == nil {
+						pageMap[p] = true
+					}
+				}
+
+				// 4. 如果仍没有页码信息，默认第1页
+				if len(pageMap) == 0 {
+					pageMap[1] = true
+				}
+
+				finalPages = make([]int, 0, len(pageMap))
+				for p := range pageMap {
+					finalPages = append(finalPages, p)
+				}
+				sort.Ints(finalPages)
 			}
 		}
 
-		// 3. 如果仍没有页码信息，默认第1页
-		if len(pageMap) == 0 {
-			pageMap[1] = true
+		// Debug: 如果页码数量 > 1，打印详细信息
+		if len(finalPages) > 1 {
+			fmt.Printf("DEBUG_MULTI_PAGE: segment_id=%d, finalPages=%v, doc.Content_len=%d\n", i, finalPages, len(doc.Content))
+			fmt.Printf("  doc.Content[:50]=%q\n", doc.Content[:min(50, len(doc.Content))])
+			pos := strings.Index(originalText, doc.Content)
+			fmt.Printf("  strings.Index(originalText, doc.Content)=%d, originalText_len=%d\n", pos, len(originalText))
+			if pos >= 0 {
+				// 找到这个位置之前的最后一个页码标记
+				for j := len(markers) - 1; j >= 0; j-- {
+					if markers[j].RunePos <= len([]rune(originalText[:pos])) {
+						fmt.Printf("  Last marker before pos: Page=%d, RunePos=%d\n", markers[j].Page, markers[j].RunePos)
+						break
+					}
+				}
+			}
 		}
-
-		finalPages := make([]int, 0, len(pageMap))
-		for p := range pageMap {
-			finalPages = append(finalPages, p)
-		}
-		sort.Ints(finalPages)
 
 		// 内容已经是处理好的文本（包含markdown表格），只需清理页码标记
 		content := pageRegex.ReplaceAllString(doc.Content, "")
@@ -646,7 +740,7 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 			SuperiorID:  doc.DocID,
 			HeadingPath: doc.HeadingPath,
 			SliceContent: SliceContent{
-				Title:   "", // 内容已合并到 Text
+				Title:   doc.Title,
 				Text:    combinedText,
 				Table:   "", // 内容已合并到 Text
 				Picture: "",

@@ -74,6 +74,9 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, file
 		return nil, nil
 	}
 
+	// 提取页码标记，用于后续页码推断
+	markers := extractPageMarkers(processed)
+
 	root := parseHeadingTree(processed, s.MaxDepth)
 	if len(root.children) == 0 {
 		semantic := NewSemanticStrategy()
@@ -89,7 +92,7 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, file
 		}
 		docs = append(docs, s.splitSection(ctx, top, nil)...)
 	}
-	return convertToChunks(docs, fileName, processed, &s.StrategyBase), nil
+	return convertToChunks(docs, fileName, processed, &s.StrategyBase, markers), nil
 }
 
 type sectionNode struct {
