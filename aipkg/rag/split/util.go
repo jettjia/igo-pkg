@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"golang.org/x/net/html"
 
@@ -528,6 +529,55 @@ func calculateMD5(text string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// isMeaninglessChunk 判断 chunk 内容是否无意义
+// 无意义的 chunk 包括：只有页码标记、只有空白字符、只有特殊字符等
+func isMeaninglessChunk(text string) bool {
+	if text == "" {
+		return true
+	}
+
+	// 清理后检查是否为空
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return true
+	}
+
+	// 检查是否只包含页码标记残留（如 "<!-- Page: XX -->" 或 "-- Page: XX -->"）
+	// 这种清理不干净的情况
+	pageOnlyRegex := regexp.MustCompile(`^[\s\p{Zs}]*(?:<!--.*?-->|&lt;!--.*?--&gt;| Page:.*)?[\s\p{Zs}]*$`)
+	if pageOnlyRegex.MatchString(trimmed) {
+		return true
+	}
+
+	// 检查是否只包含页码标记的变体（&lt;! 和 &gt; 是 HTML 转义）
+	if strings.HasPrefix(trimmed, "&lt;!--") || strings.HasPrefix(trimmed, "<!") {
+		if strings.Contains(trimmed, "Page:") && strings.Contains(trimmed, "-->") {
+			return true
+		}
+	}
+
+	// 检查以 "-- Page:" 开头并以 "-->" 结尾的页码标记变体
+	if strings.HasPrefix(trimmed, "-- Page:") || strings.HasPrefix(trimmed, "-- page:") {
+		if strings.HasSuffix(trimmed, "-->") || strings.HasSuffix(trimmed, "--&gt;") {
+			return true
+		}
+	}
+
+	// 检查是否只有特殊字符和空白
+	hasLetter := false
+	for _, r := range trimmed {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-' || r == ':' {
+			hasLetter = true
+			break
+		}
+	}
+	if !hasLetter {
+		return true
+	}
+
+	return false
+}
+
 func convertToChunks(docs []*schema.Document, fileName string, originalText string, base *StrategyBase) []*Chunk {
 	docMD5 := calculateMD5(originalText)
 	chunks := make([]*Chunk, 0, len(docs))
@@ -567,6 +617,11 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 		content := pageRegex.ReplaceAllString(doc.Content, "")
 		content = multiNewlineRegex.ReplaceAllString(content, "\n")
 		content = applyTrimSpaceIfNeeded(content, &StrategyBase{TrimSpace: true})
+
+		// 跳过空内容和无意义的 chunk（如只有页码标记的情况）
+		if content == "" || isMeaninglessChunk(content) {
+			continue
+		}
 
 		// 合并 title + text 到 text 字段（表格已在 preProcessText 中直接转为markdown）
 		combinedText := content
