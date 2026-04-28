@@ -16,10 +16,15 @@ import (
 func main() {
 	ctx := context.Background()
 
+	// 支持通过命令行参数指定文件，默认 test-error.md
 	fileName := "test-error.md"
+	if len(os.Args) > 1 {
+		fileName = os.Args[1]
+	}
+
 	text, err := os.ReadFile(fileName)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("读取文件 %s 失败: %w", fileName, err))
 	}
 	input := string(text)
 
