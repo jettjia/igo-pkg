@@ -24,8 +24,8 @@ type StrategyBase struct {
 	NormalizeWhitespace bool    // 是否替换连续空格/换行/制表符
 	TrimSpace           bool    // 是否对块内容做 TrimSpace
 
-	// 内部缓存，用于处理表格等特殊内容
-	tableCache []string
+	// 内部缓存，用于处理表格等特殊内容（存储 TableData 指针数组）
+	tableCache []*TableData
 	// 页码缓存，存储原始文本中的页码信息（用于切分后推断每个chunk的页码）
 	pageCache []string
 }

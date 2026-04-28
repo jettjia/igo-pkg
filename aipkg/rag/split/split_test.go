@@ -637,7 +637,7 @@ func TestDocumentStructureStrategy_MarkdownHeadingsAvoidListItems(t *testing.T) 
 
 	found := false
 	for _, d := range docs {
-		if strings.HasPrefix(d.SliceContent.Text, "总标题") || strings.HasPrefix(d.SliceContent.Text, "一、章节") || strings.HasPrefix(d.SliceContent.Text, "1.1 小节") {
+		if d.SliceContent.Title == "总标题" || d.SliceContent.Title == "一、章节" || d.SliceContent.Title == "1.1 小节" {
 			found = true
 			require.Contains(t, d.SliceContent.Text, "筛选：")
 			require.Contains(t, d.SliceContent.Text, "打分：")
@@ -708,7 +708,7 @@ func TestDocumentStructureStrategy_SkipEmptyHeadings(t *testing.T) {
 
 	foundChild := false
 	for _, d := range docs {
-		if strings.HasPrefix(d.SliceContent.Text, "根 / 父标题 / 子标题") {
+		if d.SliceContent.Title == "根 / 父标题 / 子标题" {
 			foundChild = true
 			require.Contains(t, d.SliceContent.Text, "### 子标题")
 			require.Contains(t, d.SliceContent.Text, "子标题内容一。")
@@ -1379,13 +1379,14 @@ func TestUtil_PreProcessTextMore(t *testing.T) {
 	// Multiple newlines are collapsed
 	require.NotContains(t, processed, "\n\n\n")
 
-	// Test with table - now converted to JSON Lines format
+	// Test with table - now converted to short TABLE_DATA_\d+ placeholder
 	tableText := "之前<table><tr><th>Header</th></tr><tr><td>Data</td></tr></table>之后"
 	processed2 := preProcessText(tableText, base)
-	// Table is converted to JSON Lines (one JSON object per row)
-	require.Contains(t, processed2, "Header")
-	require.Contains(t, processed2, "Data")
-	require.Contains(t, processed2, "{")    // JSON object
+	// Table is converted to short placeholder (Header Injection format)
+	require.Contains(t, processed2, "TABLE_DATA_0")
+	// Placeholder does not contain raw table content
+	require.NotContains(t, processed2, "Header")
+	require.NotContains(t, processed2, "Data")
 	require.NotContains(t, processed2, "HTML_TABLE_PLACEHOLDER")
 }
 
@@ -1768,7 +1769,8 @@ func TestUtil_ConvertToChunksWithTitle(t *testing.T) {
 
 	chunks := convertToChunks(docs, "test.txt", originalText, base)
 	require.Len(t, chunks, 1)
-	// Title should be prepended to text
+	// Title in SliceContent.Title, Text contains both title and content
+	require.Equal(t, "文档标题", chunks[0].SliceContent.Title)
 	require.Contains(t, chunks[0].SliceContent.Text, "文档标题")
 	require.Contains(t, chunks[0].SliceContent.Text, "正文内容")
 }
@@ -2017,7 +2019,8 @@ func TestConvertToChunks_WithTitle(t *testing.T) {
 	}
 	chunks := convertToChunks(docs, "test.txt", "文档标题\n\n测试内容", base)
 	require.Len(t, chunks, 1)
-	// Title should be prepended to text
+	// Title in SliceContent.Title, Text contains both title and content
+	require.Equal(t, "文档标题", chunks[0].SliceContent.Title)
 	require.Contains(t, chunks[0].SliceContent.Text, "文档标题")
 	require.Contains(t, chunks[0].SliceContent.Text, "测试内容")
 }
