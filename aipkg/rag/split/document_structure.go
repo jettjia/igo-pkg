@@ -79,6 +79,12 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, file
 
 	root := parseHeadingTree(processed, s.MaxDepth)
 	if len(root.children) == 0 {
+		// 检测是否为表格内容（以 JSON 行为主）
+		lines := strings.Split(processed, "\n")
+		if isMostlyTableRows(lines, 0.5) {
+			return s.splitTableRows(ctx, processed, fileName, markers)
+		}
+
 		semantic := NewSemanticStrategy()
 		semantic.StrategyBase = s.StrategyBase
 		semantic.Threshold = s.SemanticThreshold
@@ -93,6 +99,87 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, file
 		docs = append(docs, s.splitSection(ctx, top, nil)...)
 	}
 	return convertToChunks(docs, fileName, processed, &s.StrategyBase, markers), nil
+}
+
+// isJSONLine 检测是否为单行 JSON 对象
+func isJSONLine(s string) bool {
+	s = strings.TrimSpace(s)
+	return len(s) > 2 && s[0] == '{' && s[len(s)-1] == '}'
+}
+
+// isMostlyTableRows 检测内容是否以表格 JSON 行为主
+func isMostlyTableRows(lines []string, threshold float64) bool {
+	if len(lines) == 0 {
+		return false
+	}
+	jsonCount := 0
+	for _, line := range lines {
+		if isJSONLine(line) {
+			jsonCount++
+		}
+	}
+	return float64(jsonCount)/float64(len(lines)) > threshold
+}
+
+// splitTableRows 表格专用分词：以 JSON 行为原子单位合并
+func (s *DocumentStructureStrategy) splitTableRows(ctx context.Context, text string, fileName string, markers []pageMarkerInfo) ([]*Chunk, error) {
+	lines := strings.Split(text, "\n")
+	var chunks []string
+	var current strings.Builder
+	currentSize := 0
+
+	for _, line := range lines {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		lineSize := runeLen(line)
+
+		// 单行超长则保留为原子
+		if lineSize > s.ChunkSize {
+			if current.Len() > 0 {
+				chunks = append(chunks, strings.TrimSpace(current.String()))
+				current.Reset()
+				currentSize = 0
+			}
+			chunks = append(chunks, line)
+			continue
+		}
+
+		// 加上此行会超限，开始新 chunk
+		if currentSize > 0 && currentSize+lineSize > s.ChunkSize {
+			chunks = append(chunks, strings.TrimSpace(current.String()))
+			current.Reset()
+			currentSize = 0
+		}
+
+		if current.Len() > 0 {
+			current.WriteString("\n")
+			currentSize++
+		}
+		current.WriteString(line)
+		currentSize += lineSize
+	}
+
+	if current.Len() > 0 {
+		chunks = append(chunks, strings.TrimSpace(current.String()))
+	}
+
+	// 转换为 schema.Document
+	docs := make([]*schema.Document, 0, len(chunks))
+	for _, c := range chunks {
+		c = applyTrimSpaceIfNeeded(c, &s.StrategyBase)
+		if c == "" {
+			continue
+		}
+		docs = append(docs, newDocument(c, "", 0))
+	}
+
+	return convertToChunks(docs, fileName, text, &s.StrategyBase, markers), nil
 }
 
 type sectionNode struct {

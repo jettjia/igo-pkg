@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -19,15 +18,13 @@ import (
 )
 
 var (
-	urlRegex              = regexp.MustCompile(`https?://[^\s]+`)
-	emailRegex            = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
-	imageURLRegex         = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
-	tableRegex            = regexp.MustCompile(`(?s)<table>.*?</table>`)
-	pageRegex             = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
-	tablePlaceholderRegex = regexp.MustCompile(`HTML_TABLE_PLACEHOLDER_(\d+)`)
-	spaceOnlyRegex        = regexp.MustCompile(` {2,}`)
-	multiNewlineRegex     = regexp.MustCompile(`\n{2,}`)
-	pageMarkerRegex       = regexp.MustCompile(`(?i)\n?\s*<!--\s*Page:\s*\d+\s*-->\s*\n?`)
+	urlRegex          = regexp.MustCompile(`https?://[^\s]+`)
+	emailRegex        = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+	imageURLRegex     = regexp.MustCompile(`!\[.*?\]\(.*?\)`)
+	tableRegex        = regexp.MustCompile(`(?s)<table>.*?</table>`)
+	pageRegex         = regexp.MustCompile(`(?i)<!--\s*Page:\s*(\d+)\s*-->`)
+	spaceOnlyRegex    = regexp.MustCompile(` {2,}`)
+	multiNewlineRegex = regexp.MustCompile(`\n{2,}`)
 )
 
 // cellInfo holds HTML table cell data including colspan/rowspan
@@ -46,8 +43,6 @@ type pageMarkerInfo struct {
 
 // extractPageMarkers 提取文本中所有页码标记及其位置
 func extractPageMarkers(text string) []pageMarkerInfo {
-	// DEBUG
-	fmt.Fprintf(os.Stderr, "DEBUG extractPageMarkers CALLED, text_len=%d\n", len(text))
 	matches := pageRegex.FindAllStringSubmatchIndex(text, -1)
 	markers := make([]pageMarkerInfo, 0, len(matches))
 
@@ -644,8 +639,6 @@ func isMeaninglessChunk(text string) bool {
 }
 
 func convertToChunks(docs []*schema.Document, fileName string, originalText string, base *StrategyBase, markers []pageMarkerInfo) []*Chunk {
-	// DEBUG
-	fmt.Fprintf(os.Stderr, "DEBUG convertToChunks: markers count=%d, docs count=%d\n", len(markers), len(docs))
 	docMD5 := calculateMD5(originalText)
 	chunks := make([]*Chunk, 0, len(docs))
 
@@ -687,23 +680,6 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 					finalPages = append(finalPages, p)
 				}
 				sort.Ints(finalPages)
-			}
-		}
-
-		// Debug: 如果页码数量 > 1，打印详细信息
-		if len(finalPages) > 1 {
-			fmt.Printf("DEBUG_MULTI_PAGE: segment_id=%d, finalPages=%v, doc.Content_len=%d\n", i, finalPages, len(doc.Content))
-			fmt.Printf("  doc.Content[:50]=%q\n", doc.Content[:min(50, len(doc.Content))])
-			pos := strings.Index(originalText, doc.Content)
-			fmt.Printf("  strings.Index(originalText, doc.Content)=%d, originalText_len=%d\n", pos, len(originalText))
-			if pos >= 0 {
-				// 找到这个位置之前的最后一个页码标记
-				for j := len(markers) - 1; j >= 0; j-- {
-					if markers[j].RunePos <= len([]rune(originalText[:pos])) {
-						fmt.Printf("  Last marker before pos: Page=%d, RunePos=%d\n", markers[j].Page, markers[j].RunePos)
-						break
-					}
-				}
 			}
 		}
 
