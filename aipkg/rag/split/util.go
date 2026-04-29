@@ -581,9 +581,9 @@ func applyOverlapToStrings(chunks []string, chunkSize int, overlapRatio float64)
 		}
 
 		merged := prefix + next
-		if runeLen(merged) > chunkSize && chunkSize > 0 {
+		if chunkSize > 0 && runeLen(merged) > chunkSize+overlap {
 			mergedRunes := []rune(merged)
-			merged = string(mergedRunes[len(mergedRunes)-chunkSize:])
+			merged = string(mergedRunes[:chunkSize+overlap])
 		}
 		out = append(out, merged)
 	}
@@ -594,6 +594,43 @@ func calculateMD5(text string) string {
 	h := md5.New()
 	h.Write([]byte(text))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func applyOverlapToChunks(chunks []*Chunk, chunkSize int, overlapRatio float64) []*Chunk {
+	if len(chunks) <= 1 {
+		return chunks
+	}
+	overlap := overlapTokens(chunkSize, overlapRatio)
+	if overlap <= 0 {
+		return chunks
+	}
+
+	for i := 1; i < len(chunks); i++ {
+		prevRunes := []rune(chunks[i-1].SliceContent.Text)
+		currText := chunks[i].SliceContent.Text
+
+		if len(prevRunes) == 0 {
+			continue
+		}
+
+		start := len(prevRunes) - overlap
+		if start < 0 {
+			start = 0
+		}
+		prefix := string(prevRunes[start:])
+
+		merged := prefix + currText
+		if chunkSize > 0 && runeLen(merged) > chunkSize+overlap {
+			mergedRunes := []rune(merged)
+			merged = string(mergedRunes[:chunkSize+overlap])
+		}
+
+		chunks[i].SliceContent.Text = merged
+		chunks[i].SliceMD5 = calculateMD5(merged)
+		chunks[i].ID = fmt.Sprintf("%s-%d", chunks[i].SliceMD5[:8], chunks[i].SegmentID)
+	}
+
+	return chunks
 }
 
 // isMeaninglessChunk 判断 chunk 内容是否无意义

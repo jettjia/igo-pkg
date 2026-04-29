@@ -98,7 +98,9 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, file
 		}
 		docs = append(docs, s.splitSection(ctx, top, nil)...)
 	}
-	return convertToChunks(docs, fileName, processed, &s.StrategyBase, markers), nil
+	chunks := convertToChunks(docs, fileName, processed, &s.StrategyBase, markers)
+	chunks = applyOverlapToChunks(chunks, s.ChunkSize, s.OverlapRatio)
+	return chunks, nil
 }
 
 // isJSONLine 检测是否为单行 JSON 对象
@@ -179,7 +181,7 @@ func (s *DocumentStructureStrategy) splitTableRows(ctx context.Context, text str
 		docs = append(docs, newDocument(c, "", 0))
 	}
 
-	return convertToChunks(docs, fileName, text, &s.StrategyBase, markers), nil
+	return applyOverlapToChunks(convertToChunks(docs, fileName, text, &s.StrategyBase, markers), s.ChunkSize, s.OverlapRatio), nil
 }
 
 type sectionNode struct {

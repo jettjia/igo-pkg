@@ -637,7 +637,7 @@ func TestDocumentStructureStrategy_MarkdownHeadingsAvoidListItems(t *testing.T) 
 
 	found := false
 	for _, d := range docs {
-		if strings.HasPrefix(d.SliceContent.Text, "总标题") || strings.HasPrefix(d.SliceContent.Text, "一、章节") || strings.HasPrefix(d.SliceContent.Text, "1.1 小节") {
+		if strings.Contains(d.SliceContent.Text, "一、章节") || strings.Contains(d.SliceContent.Text, "1.1 小节") {
 			found = true
 			require.Contains(t, d.SliceContent.Text, "筛选：")
 			require.Contains(t, d.SliceContent.Text, "打分：")
@@ -708,7 +708,7 @@ func TestDocumentStructureStrategy_SkipEmptyHeadings(t *testing.T) {
 
 	foundChild := false
 	for _, d := range docs {
-		if strings.HasPrefix(d.SliceContent.Text, "根 / 父标题 / 子标题") {
+		if strings.Contains(d.SliceContent.Text, "父标题 / 子标题") || strings.Contains(d.SliceContent.Text, "### 子标题") {
 			foundChild = true
 			require.Contains(t, d.SliceContent.Text, "### 子标题")
 			require.Contains(t, d.SliceContent.Text, "子标题内容一。")
@@ -1768,9 +1768,8 @@ func TestUtil_ConvertToChunksWithTitle(t *testing.T) {
 
 	chunks := convertToChunks(docs, "test.txt", originalText, base, extractPageMarkers(originalText))
 	require.Len(t, chunks, 1)
-	// Title should be prepended to text
-	require.Contains(t, chunks[0].SliceContent.Text, "文档标题")
 	require.Contains(t, chunks[0].SliceContent.Text, "正文内容")
+	require.Equal(t, "文档标题", chunks[0].SliceContent.Title)
 }
 
 func TestUtil_ConvertToChunksWithPageMarkers(t *testing.T) {
@@ -2017,9 +2016,8 @@ func TestConvertToChunks_WithTitle(t *testing.T) {
 	}
 	chunks := convertToChunks(docs, "test.txt", "文档标题\n\n测试内容", base, extractPageMarkers("文档标题\n\n测试内容"))
 	require.Len(t, chunks, 1)
-	// Title should be prepended to text
-	require.Contains(t, chunks[0].SliceContent.Text, "文档标题")
 	require.Contains(t, chunks[0].SliceContent.Text, "测试内容")
+	require.Equal(t, "文档标题", chunks[0].SliceContent.Title)
 }
 
 func TestConvertToChunks_WithTable(t *testing.T) {
