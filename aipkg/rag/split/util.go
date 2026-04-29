@@ -700,18 +700,18 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 			continue
 		}
 
-		// 合并 title + text 到 text 字段（表格已在 preProcessText 中直接转为markdown）
-		combinedText := content
-		if doc.Title != "" {
-			combinedText = doc.Title + "\n\n" + combinedText
-		}
-		// 合并后再次清理多余的换行符
-		combinedText = multiNewlineRegex.ReplaceAllString(combinedText, "\n")
-		// 确保最终 chunk 不超过 ChunkSize
-		if base.ChunkSize > 0 && runeLen(combinedText) > base.ChunkSize {
-			runes := []rune(combinedText)
-			combinedText = string(runes[:base.ChunkSize])
-		}
+		// // 合并 title + text 到 text 字段（表格已在 preProcessText 中直接转为markdown）
+		// combinedText := content
+		// if doc.Title != "" {
+		// 	combinedText = doc.Title + "\n\n" + combinedText
+		// }
+		// // 合并后再次清理多余的换行符
+		// combinedText = multiNewlineRegex.ReplaceAllString(combinedText, "\n")
+		// // 确保最终 chunk 不超过 ChunkSize
+		// if base.ChunkSize > 0 && runeLen(combinedText) > base.ChunkSize {
+		// 	runes := []rune(combinedText)
+		// 	combinedText = string(runes[:base.ChunkSize])
+		// }
 
 		chunk := &Chunk{
 			DocName:     fileName,
