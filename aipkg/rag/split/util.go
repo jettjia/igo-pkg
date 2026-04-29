@@ -455,8 +455,10 @@ func tableToJSONLines(tableHTML string) string {
 			continue
 		}
 
-		// Build JSON object with header names as keys
-		obj := make(map[string]string)
+		// Build JSON object preserving column order
+		var buf strings.Builder
+		buf.WriteByte('{')
+		first := true
 		for colIdx, header := range headers {
 			header = decodeHexEscapes(header)
 			cell := decodeHexEscapes(row[colIdx])
@@ -464,14 +466,19 @@ func tableToJSONLines(tableHTML string) string {
 			cell = strings.ReplaceAll(cell, "\n", " ")
 			cell = strings.ReplaceAll(cell, "\r", " ")
 			cell = collapseSpaces(cell)
-			obj[header] = cell
+			if !first {
+				buf.WriteByte(',')
+			}
+			first = false
+			keyBytes, _ := json.Marshal(header)
+			valBytes, _ := json.Marshal(cell)
+			buf.Write(keyBytes)
+			buf.WriteByte(':')
+			buf.Write(valBytes)
 		}
+		buf.WriteByte('}')
 
-		jsonBytes, err := json.Marshal(obj)
-		if err != nil {
-			continue
-		}
-		result.WriteString(string(jsonBytes))
+		result.WriteString(buf.String())
 		result.WriteString("\n")
 	}
 
@@ -717,7 +724,7 @@ func convertToChunks(docs []*schema.Document, fileName string, originalText stri
 			HeadingPath: doc.HeadingPath,
 			SliceContent: SliceContent{
 				Title:   doc.Title,
-				Text:    combinedText,
+				Text:    content,
 				Table:   "", // 内容已合并到 Text
 				Picture: "",
 			},
