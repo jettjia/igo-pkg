@@ -2,6 +2,8 @@ package split
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -78,6 +80,12 @@ func (s *DocumentStructureStrategy) Split(ctx context.Context, text string, file
 	markers := extractPageMarkers(processed)
 
 	root := parseHeadingTree(processed, s.MaxDepth)
+	fmt.Fprintf(os.Stderr, "[DEBUG Split] root.children=%d processedLen=%d\n", len(root.children), runeLen(processed))
+	if len(root.children) > 0 {
+		for i, child := range root.children {
+			fmt.Fprintf(os.Stderr, "[DEBUG Split] child[%d] title=%q depth=%d contentLines=%d numChildren=%d\n", i, child.title, child.depth, len(child.content), len(child.children))
+		}
+	}
 	if len(root.children) == 0 {
 		// 检测是否为表格内容（以 JSON 行为主）
 		lines := strings.Split(processed, "\n")
@@ -313,6 +321,14 @@ type sectionUnit struct {
 	sec  *sectionNode
 }
 
+func truncateString(s string, maxRunes int) string {
+	runes := []rune(s)
+	if len(runes) <= maxRunes {
+		return s
+	}
+	return string(runes[:maxRunes])
+}
+
 func (s *DocumentStructureStrategy) splitSection(ctx context.Context, sec *sectionNode, titlePath []string) []*schema.Document {
 	if sec == nil || !sec.hasHeading {
 		return nil
@@ -335,6 +351,10 @@ func (s *DocumentStructureStrategy) splitSection(ctx context.Context, sec *secti
 
 	prefixText := strings.TrimSpace(sec.heading) + "\n\n"
 	prefixLen := runeLen(prefixText)
+	fmt.Fprintf(os.Stderr, "[DEBUG splitSection START] title=%q heading=%q numChildren=%d directContentLen=%d\n", docTitle, sec.heading, len(sec.children), runeLen(directContent))
+	if runeLen(directContent) > 0 {
+		fmt.Fprintf(os.Stderr, "[DEBUG splitSection DIRECT] first200=%q\n", truncateString(directContent, 200))
+	}
 	if prefixLen >= s.ChunkSize {
 		truncated := prefixText
 		if s.ChunkSize > 0 {
@@ -373,10 +393,68 @@ func (s *DocumentStructureStrategy) splitSection(ctx context.Context, sec *secti
 		}
 		chunkText := prefixText + body
 		chunkText = applyTrimSpaceIfNeeded(chunkText, &s.StrategyBase)
-		// 确保最终 chunk 不超过 ChunkSize
 		if s.ChunkSize > 0 && runeLen(chunkText) > s.ChunkSize {
-			runes := []rune(chunkText)
-			chunkText = string(runes[:s.ChunkSize])
+			if isJSONLine(body) {
+				docs = append(docs, newDocumentWithHeading(chunkText, docTitle, sec.depth, nextPath))
+				return
+			}
+			if hasJSONLines(body) {
+				bodyLines := strings.Split(body, "\n")
+				var kept []string
+				keptSize := prefixLen
+				for _, bl := range bodyLines {
+					bl = strings.TrimSpace(bl)
+					if bl == "" {
+						continue
+					}
+					lineSize := runeLen(bl) + 1
+					if keptSize+lineSize > s.ChunkSize && len(kept) > 0 {
+						break
+					}
+					kept = append(kept, bl)
+					keptSize += lineSize
+				}
+				if len(kept) > 0 {
+					chunkText = prefixText + strings.Join(kept, "\n")
+					chunkText = applyTrimSpaceIfNeeded(chunkText, &s.StrategyBase)
+				}
+				remaining := bodyLines[len(kept):]
+				for len(remaining) > 0 {
+					remainingText := strings.Join(remaining, "\n")
+					remainingText = applyTrimSpaceIfNeeded(remainingText, &s.StrategyBase)
+					if remainingText == "" {
+						break
+					}
+					if runeLen(remainingText) <= s.ChunkSize {
+						docs = append(docs, newDocumentWithHeading(remainingText, docTitle, sec.depth, nextPath))
+						break
+					}
+					var subKept []string
+					subSize := 0
+					for _, rl := range remaining {
+						rl = strings.TrimSpace(rl)
+						if rl == "" {
+							continue
+						}
+						rlSize := runeLen(rl) + 1
+						if subSize+rlSize > s.ChunkSize && len(subKept) > 0 {
+							break
+						}
+						subKept = append(subKept, rl)
+						subSize += rlSize
+					}
+					if len(subKept) > 0 {
+						subText := strings.Join(subKept, "\n")
+						docs = append(docs, newDocumentWithHeading(subText, docTitle, sec.depth, nextPath))
+						remaining = remaining[len(subKept):]
+					} else {
+						break
+					}
+				}
+			} else {
+				runes := []rune(chunkText)
+				chunkText = string(runes[:s.ChunkSize])
+			}
 		}
 		docs = append(docs, newDocumentWithHeading(chunkText, docTitle, sec.depth, nextPath))
 	}
@@ -413,8 +491,14 @@ func (s *DocumentStructureStrategy) splitSection(ctx context.Context, sec *secti
 				continue
 			}
 
+			hasJSON := hasJSONLines(unitText)
+			isSingleJSON := isJSONLine(strings.TrimSpace(unitText))
+			fmt.Fprintf(os.Stderr, "[DEBUG splitSection] title=%q kind=%s unitLen=%d available=%d hasJSONLines=%v isSingleJSON=%v first100=%q\n", docTitle, u.kind, runeLen(unitText), available, hasJSON, isSingleJSON, truncateString(unitText, 100))
 			parts := splitTextForStructure(unitText, available)
-			for _, p := range parts {
+			fmt.Fprintf(os.Stderr, "[DEBUG splitSection] parts count=%d\n", len(parts))
+			for pi, p := range parts {
+				isJL := isJSONLine(strings.TrimSpace(p))
+				fmt.Fprintf(os.Stderr, "[DEBUG splitSection] part[%d] len=%d isJSONLine=%v first80=%q\n", pi, runeLen(p), isJL, truncateString(p, 80))
 				addChunkBody(p)
 			}
 			continue
@@ -472,8 +556,11 @@ func splitTextForStructure(text string, chunkSize int) []string {
 		return []string{trimmed}
 	}
 
+	if hasJSONLines(trimmed) {
+		return splitJSONAware(trimmed, chunkSize)
+	}
+
 	protected, blocks := protectCodeBlocks(trimmed)
-	// 使用句子边界切分，保持语义完整
 	parts := splitBySentences(protected, chunkSize)
 
 	out := make([]string, 0, len(parts))
@@ -486,6 +573,100 @@ func splitTextForStructure(text string, chunkSize int) []string {
 		out = append(out, p)
 	}
 	return out
+}
+
+func hasJSONLines(text string) bool {
+	lines := strings.Split(text, "\n")
+	jsonCount := 0
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if isJSONLine(line) {
+			jsonCount++
+		}
+	}
+	return jsonCount >= 2
+}
+
+func splitJSONAware(text string, chunkSize int) []string {
+	lines := strings.Split(text, "\n")
+	type textBlock struct {
+		isJSON bool
+		text   string
+	}
+	var blocks []textBlock
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if isJSONLine(line) {
+			blocks = append(blocks, textBlock{isJSON: true, text: line})
+		} else {
+			blocks = append(blocks, textBlock{isJSON: false, text: line})
+		}
+	}
+
+	var result []string
+	var current strings.Builder
+	currentSize := 0
+
+	flushCurrent := func() {
+		if current.Len() > 0 {
+			result = append(result, strings.TrimSpace(current.String()))
+			current.Reset()
+			currentSize = 0
+		}
+	}
+
+	for _, block := range blocks {
+		blockSize := runeLen(block.text)
+
+		if block.isJSON {
+			if currentSize > 0 && currentSize+1+blockSize > chunkSize {
+				flushCurrent()
+			}
+
+			if blockSize > chunkSize {
+				flushCurrent()
+				result = append(result, block.text)
+				continue
+			}
+
+			if currentSize > 0 {
+				current.WriteString("\n")
+				currentSize++
+			}
+			current.WriteString(block.text)
+			currentSize += blockSize
+		} else {
+			if currentSize > 0 && currentSize+1+blockSize > chunkSize {
+				flushCurrent()
+			}
+
+			if blockSize > chunkSize {
+				flushCurrent()
+				parts := splitBySentences(block.text, chunkSize)
+				for _, p := range parts {
+					p = strings.TrimSpace(p)
+					if p != "" {
+						result = append(result, p)
+					}
+				}
+				continue
+			}
+
+			if currentSize > 0 {
+				current.WriteString("\n")
+				currentSize++
+			}
+			current.WriteString(block.text)
+			currentSize += blockSize
+		}
+	}
+	flushCurrent()
+
+	return result
 }
 
 // splitBySentences 按句子边界切分，保持语义完整性
