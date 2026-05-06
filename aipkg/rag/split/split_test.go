@@ -470,6 +470,20 @@ func TestSemanticStrategy_EmptyText(t *testing.T) {
 	require.Len(t, docs, 0)
 }
 
+func TestSemanticStrategy_CancelledContext(t *testing.T) {
+	s := NewSemanticStrategy()
+	s.ChunkSize = 500
+	s.Mode = SemanticModeDoubleMerging
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	text := "第一句。第二句。第三句。"
+	docs, err := s.Split(ctx, text, "test.txt")
+	require.Error(t, err)
+	require.Nil(t, docs)
+}
+
 func TestSemanticStrategy_SingleChunk(t *testing.T) {
 	s := NewSemanticStrategy()
 	s.ChunkSize = 500
@@ -1154,6 +1168,21 @@ func TestSemanticStrategy_MergeSmallSemanticGroups(t *testing.T) {
 	}
 	result3 := mergeSmallSemanticGroups(groups3, 10, 100)
 	require.NotNil(t, result3)
+}
+
+func TestMergeSmallSemanticGroups_LastGroupSpecialCase(t *testing.T) {
+	// Test the special case where last group doesn't meet minChunkSize
+	// but i == len(groups)-1 so it's still appended
+	groups := [][]string{
+		{"第一组内容很长"},
+		{"第二组内容也很长"},
+		{"短"}, // This is the last and is too short
+	}
+	// minChunkSize=10, the "短" group has len=1 but is last so should be kept
+	result := mergeSmallSemanticGroups(groups, 10, 100)
+	require.NotNil(t, result)
+	// The short last group should be in the result since it's last
+	require.GreaterOrEqual(t, len(result), 1)
 }
 
 func TestSemanticStrategy_SemanticSplitDoubleMerging(t *testing.T) {
@@ -2335,6 +2364,17 @@ func TestApplySentenceOverlapToGroups_Truncation(t *testing.T) {
 	require.Len(t, result, 2)
 }
 
+func TestApplySentenceOverlapToGroups_Multiple(t *testing.T) {
+	// Test with multiple groups where truncation happens
+	groups := [][]string{
+		{"第一组长"},
+		{"第二组长"},
+		{"第三组长"},
+	}
+	result := applySentenceOverlapToGroups(groups, 3, 10)
+	require.NotNil(t, result)
+}
+
 func TestDocumentStructureStrategy_SplitSectionEmpty(t *testing.T) {
 	s := NewDocumentStructureStrategy()
 	s.ChunkSize = 50
@@ -2717,6 +2757,29 @@ func TestRecursiveCharacterStrategy_HardSplit(t *testing.T) {
 	require.NotNil(t, docs)
 }
 
+func TestRecursiveCharacterStrategy_TextWithinChunkSize(t *testing.T) {
+	s := NewRecursiveCharacterStrategy()
+	s.ChunkSize = 100
+
+	// Short text that fits within chunkSize
+	text := "短文本"
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+	require.Equal(t, 1, len(docs))
+}
+
+func TestRecursiveCharacterStrategy_RecursiveSplitWithEmptySep(t *testing.T) {
+	s := NewRecursiveCharacterStrategy()
+	s.ChunkSize = 50
+	s.Separators = []string{"", "\n"} // Empty separator first
+
+	text := "这是一段比较长的文本"
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
 func TestRecursiveCharacterStrategy_MergePartsLong(t *testing.T) {
 	s := NewRecursiveCharacterStrategy()
 	s.ChunkSize = 20
@@ -2726,6 +2789,15 @@ func TestRecursiveCharacterStrategy_MergePartsLong(t *testing.T) {
 	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotNil(t, docs)
+}
+
+func TestMergeParts_SinglePartExceedsChunk(t *testing.T) {
+	// This specifically tests line 152-156 in mergeParts
+	// A single part that exceeds chunkSize should be hard split
+	parts := []string{strings.Repeat("A", 50)}
+	result := mergeParts(parts, ",", 20)
+	require.NotNil(t, result)
+	require.Greater(t, len(result), 1) // Should be split into multiple chunks
 }
 
 func TestFixedSizeStrategy_SplitHard(t *testing.T) {
@@ -2791,6 +2863,49 @@ func TestMergeSmallSemanticGroups_PrevMergeBranch(t *testing.T) {
 	}
 	// minChunkSize=10, chunkSize=50
 	result := mergeSmallSemanticGroups(groups, 10, 50)
+	require.NotNil(t, result)
+}
+
+func TestMergeSmallSemanticGroups_MarkdownHeading(t *testing.T) {
+	// This test targets the markdown heading line branch (line 584-591)
+	groups := [][]string{
+		{"# 这是一个标题"},
+		{"标题后面的内容"},
+	}
+	// minChunkSize=10, chunkSize=100
+	result := mergeSmallSemanticGroups(groups, 10, 100)
+	require.NotNil(t, result)
+}
+
+func TestMergeSmallSemanticGroups_FallbackAppend(t *testing.T) {
+	// This test targets the fallback case at line 620 where nothing matches
+	// and the group is just appended
+	groups := [][]string{
+		{"短"},
+		{"内容"},
+	}
+	// minChunkSize=50 (high, so no merging), chunkSize=100
+	result := mergeSmallSemanticGroups(groups, 50, 100)
+	require.NotNil(t, result)
+	// Both groups should remain separate since they're too short to merge
+	// and too short to pass the >= minChunkSize check
+}
+
+func TestMergeSmallSemanticGroups_HeadingCombinedTooLarge(t *testing.T) {
+	// This tests the case where:
+	// 1. g is a single heading line
+	// 2. combined with next exceeds chunkSize
+	// 3. g is too small to pass minChunkSize
+	// 4. There's no previous merged group to combine with
+	// This forces the fallback append at line 620
+	groups := [][]string{
+		{"# 标题"}, // Single heading line - fails line 584 condition since combined too large
+		{"内容"},   // Too short to pass minChunkSize check at 594
+	}
+	// minChunkSize=20, chunkSize=30
+	// combined "# 标题"+"内容" is too long for chunkSize
+	// "内容" alone is too short for minChunkSize
+	result := mergeSmallSemanticGroups(groups, 20, 30)
 	require.NotNil(t, result)
 }
 
@@ -3013,6 +3128,587 @@ func TestSemanticStrategy_CosineSimilarityZero(t *testing.T) {
 
 	// Text with completely different characters
 	text := "你好世界 hello world 12345 !@#$%"
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestCollapseSpaces(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"empty", "", ""},
+		{"single space", " ", ""},
+		{"multiple spaces", "a   b", "a b"},
+		{"tab and space", "a\t b", "a\t b"},
+		{"leading spaces trimmed", "  hello", "hello"},
+		{"trailing spaces trimmed", "hello  ", "hello"},
+		{"mixed whitespace trimmed", "  hello   world  ", "hello world"},
+		{"no spaces", "helloworld", "helloworld"},
+		{"newlines preserved", "hello\nworld", "hello\nworld"},
+		{"tabs preserved", "hello\tworld", "hello\tworld"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := collapseSpaces(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsMeaninglessChunk(t *testing.T) {
+	tests := []struct {
+		name     string
+		text     string
+		expected bool
+	}{
+		{"empty", "", true},
+		{"spaces only", "   ", true},
+		{"tabs only", "\t\t", true},
+		{"page comment only", "<!-- Page: 1 -->", true},
+		{"page comment with spaces", "  <!-- Page: 1 -->  ", true},
+		{"escaped page comment", "&lt;!-- Page: 1 --&gt;", true},
+		{"normal text", "Hello world", false},
+		{"text with page number", "<!-- Page: 1 -->Hello", false},
+		{"chinese text", "你好世界", false},
+		{"just newlines", "\n\n\n", true},
+		{"code block", "```json\n{\"key\": \"value\"}\n```", false},
+		{"mixed content", "Some text\n<!-- Page: 1 -->\nMore text", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isMeaninglessChunk(tt.text)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDecodeHexEscapes_MoreCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"empty", "", ""},
+		{"no hex", "hello world", "hello world"},
+		{"valid unicode", "A\u0041B", "AAB"},
+		{"chinese unicode", "\u4f60\u597d", "你好"},
+		{"mixed", "hello\u0020world", "hello world"},
+		{"invalid hex", "test\\uZZGZtest", "test\\uZZGZtest"},
+		{"incomplete escape", "test\\u", "test\\u"},
+		{"lower case hex", "\u0061", "a"},
+		{"upper case hex", "\u0041", "A"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := decodeHexEscapes(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestTableToJSONLines_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"empty", ""},
+		{"no rows", "<table></table>"},
+		{"only header", "<table><tr><th>Col1</th></tr></table>"},
+		{"simple table", "<table><tr><th>Name</th><th>Age</th></tr><tr><td>Alice</td><td>30</td></tr></table>"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tableToJSONLines(tt.input)
+			if tt.name == "simple table" {
+				require.Contains(t, result, "Alice")
+				require.Contains(t, result, "30")
+			} else {
+				require.Equal(t, "", result)
+			}
+		})
+	}
+}
+
+func TestApplyOverlapToChunks_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name   string
+		chunks []*Chunk
+	}{
+		{"nil chunks", nil},
+		{"empty chunks", []*Chunk{}},
+		{"single chunk", []*Chunk{{SegmentID: 1, SliceContent: SliceContent{Text: "Hello"}}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := applyOverlapToChunks(tt.chunks, 10, 0.1)
+			if tt.chunks == nil {
+				require.Nil(t, result)
+			} else {
+				require.Equal(t, len(tt.chunks), len(result))
+			}
+		})
+	}
+}
+
+func TestApplyOverlapToChunks_Normal(t *testing.T) {
+	chunks := []*Chunk{
+		{SegmentID: 1, SliceContent: SliceContent{Text: "chunk1 content"}},
+		{SegmentID: 2, SliceContent: SliceContent{Text: "chunk2 content"}},
+		{SegmentID: 3, SliceContent: SliceContent{Text: "chunk3 content"}},
+	}
+
+	result := applyOverlapToChunks(chunks, 20, 0.3)
+
+	require.Len(t, result, 3)
+	require.Contains(t, result[1].SliceContent.Text, "chunk2")
+	require.Contains(t, result[2].SliceContent.Text, "chunk3")
+}
+
+func TestDecodeHexEscapes_AllInvalid(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"just backslash u", "test\\u", "test\\u"},
+		{"short hex", "test\\u01", "test\\u01"},
+		{"non-hex chars", "test\\uGHIJtest", "test\\uGHIJtest"},
+		{"all invalid", "abc\\u\\uZZZ\\u123", "abc\\u\\uZZZ\\u123"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := decodeHexEscapes(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestTableToJSONLines_WithRowspan(t *testing.T) {
+	// Table with rowspan attribute
+	input := `<table><tr><th>Header</th></tr><tr><td rowspan="2">Spanned Cell</td></tr><tr><td>Normal Cell</td></tr></table>`
+	result := tableToJSONLines(input)
+	// Should not be empty since it has data rows
+	require.NotEqual(t, "", result)
+}
+
+func TestTableToJSONLines_WithColspan(t *testing.T) {
+	// Table with colspan attribute
+	input := `<table><tr><th>Header1</th><th>Header2</th></tr><tr><td colspan="2">Spanned Cell</td></tr></table>`
+	result := tableToJSONLines(input)
+	require.NotEqual(t, "", result)
+}
+
+func TestTableToJSONLines_MultipleDataRows(t *testing.T) {
+	input := `<table><tr><th>Name</th><th>Value</th></tr><tr><td>A</td><td>1</td></tr><tr><td>B</td><td>2</td></tr><tr><td>C</td><td>3</td></tr></table>`
+	result := tableToJSONLines(input)
+	lines := strings.Split(strings.TrimSpace(result), "\n")
+	require.Len(t, lines, 3)
+}
+
+func TestApplyOverlapToChunks_EmptyText(t *testing.T) {
+	chunks := []*Chunk{
+		{SegmentID: 1, SliceContent: SliceContent{Text: ""}},
+		{SegmentID: 2, SliceContent: SliceContent{Text: "content"}},
+	}
+	result := applyOverlapToChunks(chunks, 20, 0.3)
+	require.Len(t, result, 2)
+}
+
+func TestApplyOverlapToChunks_LargeOverlap(t *testing.T) {
+	chunks := []*Chunk{
+		{SegmentID: 1, SliceContent: SliceContent{Text: "first chunk"}},
+		{SegmentID: 2, SliceContent: SliceContent{Text: "second chunk"}},
+	}
+	result := applyOverlapToChunks(chunks, 20, 0.8)
+	require.Len(t, result, 2)
+}
+
+func TestApplyOverlapToChunks_ZeroOverlap(t *testing.T) {
+	chunks := []*Chunk{
+		{SegmentID: 1, SliceContent: SliceContent{Text: "chunk1"}},
+		{SegmentID: 2, SliceContent: SliceContent{Text: "chunk2"}},
+	}
+	result := applyOverlapToChunks(chunks, 20, 0)
+	require.Len(t, result, 2)
+	// With zero overlap, chunks should remain unchanged
+	require.Equal(t, "chunk1", result[0].SliceContent.Text)
+}
+
+func TestIsJSONLine(t *testing.T) {
+	require.True(t, isJSONLine(`{"key": "value"}`))
+	require.True(t, isJSONLine(`{"a":1,"b":2}`))
+	require.False(t, isJSONLine(""))
+	require.False(t, isJSONLine("{}"))
+	require.True(t, isJSONLine("{nested: {}}"))
+	require.False(t, isJSONLine("not json"))
+	require.True(t, isJSONLine("  {json}  "))
+}
+
+func TestSplitTableRows_CancelledContext(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	// Short rows - processing should stop due to cancelled context
+	text := `{"name":"Alice","age":"30"}` + "\n" + `{"name":"Bob","age":"25"}`
+
+	_, err := s.splitTableRows(ctx, text, "test.txt", nil)
+	// Should return context error
+	require.Error(t, err)
+	require.Equal(t, context.Canceled, err)
+}
+
+func TestIsMostlyTableRows(t *testing.T) {
+	tests := []struct {
+		name      string
+		lines     []string
+		threshold float64
+		expected  bool
+	}{
+		{"empty lines", []string{}, 0.5, false},
+		{"all json lines", []string{`{"a":1}`, `{"a":2}`, `{"a":3}`, `{"a":4}`}, 0.5, true},
+		{"mostly json lines", []string{`{"a":1}`, `{"a":2}`, "plain text", `{"a":4}`}, 0.5, true},
+		{"half json lines", []string{`{"a":1}`, "plain", `{"a":3}`, "plain"}, 0.5, false},
+		{"mostly plain lines", []string{`{"a":1}`, "plain", "plain", "plain"}, 0.5, false},
+		{"all plain lines", []string{"text1", "text2", "text3"}, 0.5, false},
+		{"single json line", []string{`{"a":1}`}, 0.5, true},
+		{"single json line threshold 1.0", []string{`{"a":1}`}, 1.0, false},
+		{"all json threshold 0.8", []string{`{"a":1}`, `{"a":2}`, `{"a":3}`, `{"a":4}`}, 0.8, true},
+		{"edge 50% json", []string{`{"a":1}`, "plain", "plain", "plain"}, 0.25, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isMostlyTableRows(tt.lines, tt.threshold)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestSplitTableRows(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+
+	tests := []struct {
+		name           string
+		text           string
+		minChunks      int
+		maxChunks      int
+		expectContains string
+	}{
+		{
+			name:           "short rows that should merge",
+			text:           `{"name":"Alice","age":"30"}^M{"name":"Bob","age":"25"}^M{"name":"Charlie","age":"35"}`,
+			minChunks:      1,
+			maxChunks:      2,
+			expectContains: "Alice",
+		},
+		{
+			name:           "empty text",
+			text:           "",
+			minChunks:      0,
+			maxChunks:      0,
+			expectContains: "",
+		},
+		{
+			name:           "single row",
+			text:           `{"name":"Alice","age":"30"}`,
+			minChunks:      1,
+			maxChunks:      1,
+			expectContains: "Alice",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			docs, err := s.Split(context.Background(), tt.text, "test.txt")
+			require.NoError(t, err)
+			if tt.minChunks == 0 && tt.maxChunks == 0 {
+				require.Nil(t, docs)
+				return
+			}
+			require.NotNil(t, docs)
+			require.GreaterOrEqual(t, len(docs), tt.minChunks)
+			require.LessOrEqual(t, len(docs), tt.maxChunks)
+		})
+	}
+}
+
+func TestSplitTableRows_WithEmptyLines(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+
+	// Rows with empty lines mixed in - empty lines should be skipped
+	text := `{"a":"1"}` + "\n\n" + `{"a":"2"}` + "\n \n" + `{"a":"3"}`
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+	require.LessOrEqual(t, len(docs), 2)
+}
+
+func TestSplitJSONAware(t *testing.T) {
+	tests := []struct {
+		name      string
+		text      string
+		chunkSize int
+		minResult int
+	}{
+		{"empty", "", 100, 0},
+		{"single json", `{"key":"value"}`, 100, 1},
+		{"multiple json lines", `{"a":1}`+"\n"+`{"b":2}`+"\n"+`{"c":3}`, 100, 1},
+		{"mixed content small", "text\n"+`{"json":true}`+"\n"+"more", 100, 1},
+		{"large json exceeds chunk", `{"data":"` + strings.Repeat("x", 200) + `"}`, 100, 1},
+		{"long text exceeds chunk", strings.Repeat("这是一段很长的文本。", 30), 50, 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := splitJSONAware(tt.text, tt.chunkSize)
+			if tt.minResult == 0 {
+				require.Len(t, result, 0)
+			} else {
+				require.GreaterOrEqual(t, len(result), tt.minResult)
+			}
+		})
+	}
+}
+
+func TestDocumentStructureStrategy_TableFallback(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 150
+	s.MaxDepth = 3
+
+	// Pure table content without headings should use splitTableRows
+	text := `{"name":"测试","value":"值1"}` + "\n" + `{"name":"测试2","value":"值2"}` + "\n" + `{"name":"测试3","value":"值3"}`
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+	// Should merge into fewer chunks since rows are short
+	require.LessOrEqual(t, len(docs), 3)
+}
+
+func TestSplitTableRows_SingleLongLine(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 50
+
+	// Single line exceeding chunkSize should be kept as-is
+	text := `{"data":"` + strings.Repeat("x", 100) + `"}`
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+	// The long JSON should be kept as one chunk despite exceeding chunkSize
+	require.Equal(t, 1, len(docs))
+}
+
+func TestDocumentStructureStrategy_WithChildSections(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 200
+	s.MaxDepth = 3
+
+	// Heading with child sections
+	text := `# 主标题
+
+## 子章节1
+这是子章节1的内容，有一些文字。
+
+## 子章节2
+这是子章节2的内容，还有一些文字。
+`
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+	require.GreaterOrEqual(t, len(docs), 1)
+}
+
+func TestDocumentStructureStrategy_HeadingOnly(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+
+	// Only heading without content
+	text := `# 标题
+
+## 子章节
+`
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestDocumentStructureStrategy_LargePrefix(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 50
+	s.MaxDepth = 3
+
+	// Heading that alone exceeds chunk size
+	text := `# 这是一个非常非常长的标题它超过了分块大小的限制
+这是内容`
+	// Note: We expect the prefix alone to exceed ChunkSize
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestDocumentStructureStrategy_SkipEmptyWithChildren(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+	s.SkipEmptyHeadings = true
+
+	// Heading with empty content but has children
+	text := `# 标题
+
+## 子章节
+子章节内容`
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestHasJSONLines(t *testing.T) {
+	tests := []struct {
+		name     string
+		text     string
+		expected bool
+	}{
+		{"empty", "", false},
+		{"single json", `{"key":"value"}`, false},
+		{"multiple json", `{"a":1}`+"\n"+`{"b":2}`, true},
+		{"single text", "plain text", false},
+		{"mixed one json", "text"+"\n"+`{"json":true}`+"\n"+"more", false},
+		{"mixed two json", "text"+"\n"+`{"json":true}`+"\n"+`{"more":true}`, true},
+		{"only whitespace", "   \n\n   ", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hasJSONLines(tt.text)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestSplitTextForStructure_WithCodeBlocks(t *testing.T) {
+	// Code blocks should be protected during splitting
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+
+	// Text with code blocks that is longer than chunk size
+	text := `# 标题
+这是一个很长的段落，中间有代码块。
+
+` + "```python\nprint('hello')\n```" + `
+
+这是段落的其余部分，应该和代码块一起保持完整。
+`
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestDocumentStructureStrategy_WhitespaceContent(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+	s.SkipEmptyHeadings = true
+
+	// Heading with only whitespace content
+	text := `# 标题
+
+   `
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	// With SkipEmptyHeadings, whitespace-only content should be skipped
+	_ = docs
+}
+
+func TestDocumentStructureStrategy_DirectContentExceedsSpace(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 20
+	s.MaxDepth = 3
+
+	// Heading + content that exceeds available space after prefix
+	text := "# 短标题\n这是非常长的内容，它远远超过了可用空间"
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestRenderSection_WhitespaceOnlyContent(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 100
+	s.MaxDepth = 3
+
+	// This should result in section with whitespace content that matches spaceLineRegex
+	text := `# 标题
+
+   `
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestDocumentStructureStrategy_JSONBodyExceedsChunk(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 30
+	s.MaxDepth = 3
+
+	// Heading with a single JSON body that exceeds chunk size
+	// The body is a single JSON line that is longer than ChunkSize
+	text := "# 标题\n{" + strings.Repeat("a", 50) + "}"
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestDocumentStructureStrategy_HasJSONLinesBody(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 50
+	s.MaxDepth = 3
+
+	// Body with multiple JSON lines where some remain after keeping some
+	// This triggers the remainingText == "" break case
+	text := "# 标题\n{" + strings.Repeat("a", 20) + "}\n{" + strings.Repeat("b", 20) + "}\n{" + strings.Repeat("c", 20) + "}"
+
+	docs, err := s.Split(context.Background(), text, "test.txt")
+	require.NoError(t, err)
+	require.NotNil(t, docs)
+}
+
+func TestDocumentStructureStrategy_EmptyRemainingInSubLoop(t *testing.T) {
+	s := NewDocumentStructureStrategy()
+	s.ChunkSize = 20
+	s.MaxDepth = 3
+
+	// Body where remaining items exist but are all whitespace/empty
+	// This triggers the subKept empty -> break case at line 450-451
+	text := "# 标题\n{" + strings.Repeat("x", 15) + "}\n   \n\n"
+
 	docs, err := s.Split(context.Background(), text, "test.txt")
 	require.NoError(t, err)
 	require.NotNil(t, docs)

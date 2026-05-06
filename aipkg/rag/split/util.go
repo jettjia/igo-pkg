@@ -648,23 +648,13 @@ func isMeaninglessChunk(text string) bool {
 
 	// 检查是否只包含页码标记残留（如 "<!-- Page: XX -->" 或 "-- Page: XX -->"）
 	// 这种清理不干净的情况
-	pageOnlyRegex := regexp.MustCompile(`^[\s\p{Zs}]*(?:<!--.*?-->|&lt;!--.*?--&gt;| Page:.*)?[\s\p{Zs}]*$`)
-	if pageOnlyRegex.MatchString(trimmed) {
+	// 修复：使用严格的 regex 检查完整的页码标记
+	pageOnlyRegex := regexp.MustCompile(`^<!--\s*Page:\s*\d+\s*-->$`)
+	escapedPageRegex := regexp.MustCompile(`^&lt;!--\s*Page:\s*\d+\s*--&gt;$`)
+	pageMarkerAltRegex := regexp.MustCompile(`^--\s*Page:\s*\d+\s*-->$`)
+
+	if pageOnlyRegex.MatchString(trimmed) || escapedPageRegex.MatchString(trimmed) || pageMarkerAltRegex.MatchString(trimmed) {
 		return true
-	}
-
-	// 检查是否只包含页码标记的变体（&lt;! 和 &gt; 是 HTML 转义）
-	if strings.HasPrefix(trimmed, "&lt;!--") || strings.HasPrefix(trimmed, "<!") {
-		if strings.Contains(trimmed, "Page:") && strings.Contains(trimmed, "-->") {
-			return true
-		}
-	}
-
-	// 检查以 "-- Page:" 开头并以 "-->" 结尾的页码标记变体
-	if strings.HasPrefix(trimmed, "-- Page:") || strings.HasPrefix(trimmed, "-- page:") {
-		if strings.HasSuffix(trimmed, "-->") || strings.HasSuffix(trimmed, "--&gt;") {
-			return true
-		}
 	}
 
 	// 检查是否只有特殊字符和空白
