@@ -1343,7 +1343,7 @@ func TestDocumentStructureStrategy_ProtectCodeBlocks(t *testing.T) {
 	require.Len(t, multiBlocks, 2)
 
 	// Test unclosed code block - should be treated as code block
-	protected, blocks = protectCodeBlocks("```\n未闭合")
+	protected, blocks = protectCodeBlocks("```\n未闭合") //nolint:ineffassign // intentionally testing reassignment
 	require.Len(t, blocks, 1)
 	// The unclosed block contains "未闭合", not "go code"
 	require.Contains(t, blocks[0], "未闭合")

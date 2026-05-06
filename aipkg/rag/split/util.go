@@ -665,11 +665,7 @@ func isMeaninglessChunk(text string) bool {
 			break
 		}
 	}
-	if !hasLetter {
-		return true
-	}
-
-	return false
+	return !hasLetter
 }
 
 func convertToChunks(docs []*schema.Document, fileName string, originalText string, base *StrategyBase, markers []pageMarkerInfo) []*Chunk {

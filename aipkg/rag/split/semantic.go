@@ -1157,7 +1157,7 @@ func tokenizeForTfidf(s string) []string {
 		buf = nil
 	}
 
-	for _, r := range []rune(s) {
+	for _, r := range s {
 		if isCJK(r) {
 			flush()
 			tokens = append(tokens, string(r))
